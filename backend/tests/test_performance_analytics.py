@@ -94,6 +94,24 @@ def test_summarize_performance_groups_by_strategy_and_catalyst():
     assert summary["by_catalyst_type"]["insider_director_purchase"]["average_realized_r"] == -1.0
 
 
+def test_summarize_performance_groups_by_score_band_for_threshold_tuning():
+    repo = _repo()
+    high = repo.save_recommendation(_recommendation("AAA", "gap_and_go", "earnings_beat", setup_score=91))
+    medium = repo.save_recommendation(_recommendation("BBB", "gap_and_go", "earnings_beat", setup_score=72))
+    low = repo.save_recommendation(_recommendation("CCC", "gap_and_go", "earnings_beat", setup_score=41))
+    repo.save_outcome(high.id, {"status": "closed", "realized_r": 2.0, "target_hit": True, "stop_hit": False})
+    repo.save_outcome(medium.id, {"status": "closed", "realized_r": -1.0, "target_hit": False, "stop_hit": True})
+    repo.save_outcome(low.id, {"status": "closed", "realized_r": -0.5, "target_hit": False, "stop_hit": True})
+
+    summary = summarize_performance(repo.db)
+
+    assert summary["by_score_band"] == {
+        "40-59": {"closed_total": 1, "wins": 0, "win_rate": 0.0, "average_realized_r": -0.5, "expectancy_r": -0.5},
+        "70-84": {"closed_total": 1, "wins": 0, "win_rate": 0.0, "average_realized_r": -1.0, "expectancy_r": -1.0},
+        "85-100": {"closed_total": 1, "wins": 1, "win_rate": 1.0, "average_realized_r": 2.0, "expectancy_r": 2.0},
+    }
+
+
 def test_summarize_performance_handles_empty_history():
     repo = _repo()
 

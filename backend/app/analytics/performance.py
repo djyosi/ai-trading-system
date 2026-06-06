@@ -29,6 +29,7 @@ def summarize_performance(db):
             closed,
             lambda recommendation: (recommendation.input_snapshot.get("catalyst") or {}).get("catalyst_type", "unknown"),
         ),
+        "by_score_band": _group_metrics(closed, lambda recommendation: _score_band(recommendation.setup_score)),
     }
 
 
@@ -51,6 +52,20 @@ def _metrics_for_outcomes(outcomes):
         "average_realized_r": _average(realized_values),
         "expectancy_r": _average(realized_values),
     }
+
+
+def _score_band(score):
+    if score is None:
+        return "unknown"
+    if score >= 85:
+        return "85-100"
+    if score >= 70:
+        return "70-84"
+    if score >= 60:
+        return "60-69"
+    if score >= 40:
+        return "40-59"
+    return "0-39"
 
 
 def _average(values):

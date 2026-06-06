@@ -73,4 +73,6 @@ def test_performance_endpoint_returns_aggregate_learning_metrics():
     assert payload["win_rate"] == 0.5
     assert payload["average_realized_r"] == 0.5
     assert payload["by_strategy"]["gap_and_go"]["expectancy_r"] == 0.5
+    assert payload["by_score_band"]["70-84"]["closed_total"] == 2
+    assert payload["by_score_band"]["70-84"]["expectancy_r"] == 0.5
     app.dependency_overrides.clear()
