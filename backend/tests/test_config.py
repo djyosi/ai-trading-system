@@ -23,7 +23,7 @@ def test_default_ibkr_configuration_is_paper_and_disabled():
 
 
 def test_default_data_provider_configuration_prefers_massive_with_fallback():
-    settings = Settings()
+    settings = Settings(_env_file=None)
 
     assert settings.massive_base_url == "https://api.massive.com"
     assert settings.massive_api_key is None

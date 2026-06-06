@@ -8,6 +8,10 @@ from app.scanner.service import ScannerService
 
 
 class FakeMarketDataProvider:
+    def __init__(self):
+        self.daily_calls = []
+        self.intraday_calls = []
+
     async def get_snapshot(self, ticker):
         snapshots = {
             "PAX": {
@@ -30,6 +34,7 @@ class FakeMarketDataProvider:
         return snapshots[ticker]
 
     async def get_daily_candles(self, ticker, start, end):
+        self.daily_calls.append({"ticker": ticker, "start": start, "end": end})
         if ticker == "THIN":
             return [
                 {"high": 3.3, "low": 3.0, "close": 3.1, "volume": 20_000},
@@ -43,6 +48,7 @@ class FakeMarketDataProvider:
         ]
 
     async def get_intraday_candles(self, ticker, start, end, timeframe="1m"):
+        self.intraday_calls.append({"ticker": ticker, "start": start, "end": end, "timeframe": timeframe})
         if ticker == "THIN":
             return [
                 {"high": 3.2, "low": 3.1, "close": 3.15, "volume": 2_000},
@@ -107,6 +113,26 @@ async def test_scanner_builds_and_persists_active_watch_recommendation():
     assert len(persisted) == 1
     assert persisted[0].ticker == "PAX"
     assert persisted[0].input_snapshot["features"]["gap_percent"] == 7.54
+
+
+@pytest.mark.asyncio
+async def test_scanner_uses_real_date_ranges_for_live_provider_calls():
+    provider = FakeMarketDataProvider()
+    scanner = ScannerService(
+        market_data_provider=provider,
+        catalyst_provider=FakeCatalystProvider(),
+        market_context_provider=FakeMarketContextProvider(),
+    )
+
+    await scanner.scan(["PAX"])
+
+    assert provider.daily_calls[0]["start"] is not None
+    assert provider.daily_calls[0]["end"] is not None
+    assert provider.daily_calls[0]["start"] < provider.daily_calls[0]["end"]
+    assert provider.intraday_calls[0]["start"] is not None
+    assert provider.intraday_calls[0]["end"] is not None
+    assert provider.intraday_calls[0]["start"] <= provider.intraday_calls[0]["end"]
+    assert provider.intraday_calls[0]["timeframe"] == "1m"
 
 
 @pytest.mark.asyncio

@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from app.catalysts.classifier import calculate_freshness, classify_catalyst
 from app.features.liquidity import (
     calculate_dollar_volume,
@@ -43,9 +45,19 @@ class ScannerService:
         return results
 
     async def _scan_one(self, ticker, market_context):
+        ranges = _default_scan_ranges()
         snapshot = await self.market_data_provider.get_snapshot(ticker)
-        daily_candles = await self.market_data_provider.get_daily_candles(ticker, start=None, end=None)
-        intraday_candles = await self.market_data_provider.get_intraday_candles(ticker, start=None, end=None, timeframe="1m")
+        daily_candles = await self.market_data_provider.get_daily_candles(
+            ticker,
+            start=ranges["daily_start"],
+            end=ranges["daily_end"],
+        )
+        intraday_candles = await self.market_data_provider.get_intraday_candles(
+            ticker,
+            start=ranges["intraday_start"],
+            end=ranges["intraday_end"],
+            timeframe="1m",
+        )
         catalysts = await self.catalyst_provider.get_catalysts(ticker)
 
         features = build_features(snapshot, daily_candles, intraday_candles)
@@ -105,3 +117,14 @@ def _average_volume(candles):
     if not volumes:
         return None
     return round(sum(volumes) / len(volumes))
+
+
+def _default_scan_ranges(now=None):
+    current = now or datetime.now(timezone.utc)
+    end = current.date()
+    return {
+        "daily_start": end - timedelta(days=30),
+        "daily_end": end,
+        "intraday_start": end,
+        "intraday_end": end,
+    }
