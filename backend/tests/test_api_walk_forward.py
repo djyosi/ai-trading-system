@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from app.api.routes.backtests import get_backtest_market_data_provider
 from app.main import app
 
 
@@ -13,6 +14,21 @@ def _candle(index, high, low, close, volume=1_000_000):
         "volume": volume,
         "vwap": round((high + low + close) / 3, 2),
     }
+
+
+class FakeHistoricalProvider:
+    def __init__(self):
+        self.calls = []
+
+    async def get_daily_candles(self, ticker, start, end):
+        self.calls.append({"ticker": ticker, "start": start, "end": end})
+        return [
+            _candle(1, 10.0, 9.6, 9.9),
+            _candle(2, 10.2, 9.7, 10.0),
+            _candle(3, 10.4, 9.8, 10.1),
+            _candle(4, 11.8, 10.7, 11.5, volume=3_200_000),
+            _candle(5, 12.8, 11.4, 12.4, volume=2_400_000),
+        ]
 
 
 def test_walk_forward_api_runs_replay_from_request_payload():
@@ -49,6 +65,47 @@ def test_walk_forward_api_runs_replay_from_request_payload():
     assert payload["evaluated_bars"] == 2
     assert payload["summary"]["closed_total"] >= 1
     assert payload["items"][0]["recommendation"]["inputs"]["walk_forward"]["visible_candle_count"] == 4
+
+
+def test_walk_forward_api_fetches_daily_candles_from_market_data_provider_when_requested():
+    provider = FakeHistoricalProvider()
+    app.dependency_overrides[get_backtest_market_data_provider] = lambda: provider
+    client = TestClient(app)
+
+    try:
+        response = client.post(
+            "/api/backtests/walk-forward",
+            json={
+                "ticker": "AAPL",
+                "source": "massive",
+                "start": "2025-01-01",
+                "end": "2025-01-10",
+                "lookback_bars": 3,
+                "horizon_bars": 1,
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert provider.calls == [{"ticker": "AAPL", "start": "2025-01-01", "end": "2025-01-10"}]
+    assert payload["ticker"] == "AAPL"
+    assert payload["data_source"] == "massive"
+    assert payload["source_candle_count"] == 5
+    assert payload["evaluated_bars"] == 2
+
+
+def test_walk_forward_api_requires_start_and_end_for_provider_backtests():
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/backtests/walk-forward",
+        json={"ticker": "AAPL", "source": "massive", "lookback_bars": 3, "horizon_bars": 1},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "start and end are required when source is massive"
 
 
 def test_walk_forward_api_rejects_too_few_candles_for_lookback():
