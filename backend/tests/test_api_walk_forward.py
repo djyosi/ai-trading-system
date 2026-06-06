@@ -1,7 +1,13 @@
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.api.routes.backtests import get_backtest_market_data_provider
+from app.db.base import Base
+from app.db.session import get_db
 from app.main import app
+from app.repositories.recommendations import RecommendationRepository
 
 
 def _candle(index, high, low, close, volume=1_000_000):
@@ -106,6 +112,62 @@ def test_walk_forward_api_requires_start_and_end_for_provider_backtests():
 
     assert response.status_code == 400
     assert response.json()["detail"] == "start and end are required when source is massive"
+
+
+def _client_with_db():
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    TestingSessionLocal = sessionmaker(bind=engine)
+
+    def override_get_db():
+        db = TestingSessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = override_get_db
+    return TestClient(app), TestingSessionLocal
+
+
+def test_walk_forward_api_can_persist_replay_recommendations_and_outcomes():
+    client, SessionLocal = _client_with_db()
+    candles = [
+        _candle(1, 10.0, 9.6, 9.9),
+        _candle(2, 10.2, 9.7, 10.0),
+        _candle(3, 10.4, 9.8, 10.1),
+        _candle(4, 11.8, 10.7, 11.5, volume=3_200_000),
+        _candle(5, 12.8, 11.4, 12.4, volume=2_400_000),
+    ]
+
+    response = client.post(
+        "/api/backtests/walk-forward",
+        json={
+            "ticker": "PAX",
+            "candles": candles,
+            "catalysts": [{"type": "earnings_beat", "timestamp_ms": candles[3]["timestamp_ms"]}],
+            "market_context": {"risk_context": "supportive", "spy_trend": "up", "qqq_trend": "up"},
+            "lookback_bars": 3,
+            "horizon_bars": 1,
+            "persist_recommendations": True,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["persisted_recommendations"] == 2
+    db = SessionLocal()
+    try:
+        records = RecommendationRepository(db).list_recommendations()
+        assert len(records) == 2
+        assert records[0].outcome is not None
+    finally:
+        db.close()
+        app.dependency_overrides.clear()
 
 
 def test_walk_forward_api_rejects_too_few_candles_for_lookback():

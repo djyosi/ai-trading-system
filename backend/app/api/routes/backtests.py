@@ -4,7 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.backtesting.walk_forward import run_walk_forward_replay
+from app.db.session import get_db
 from app.providers.massive import MassiveProvider
+from app.repositories.recommendations import RecommendationRepository
 
 router = APIRouter(prefix="/backtests", tags=["backtests"])
 
@@ -19,6 +21,7 @@ class WalkForwardReplayRequest(BaseModel):
     source: Optional[str] = None
     start: Optional[str] = None
     end: Optional[str] = None
+    persist_recommendations: bool = False
 
 
 def get_backtest_market_data_provider():
@@ -29,10 +32,12 @@ def get_backtest_market_data_provider():
 async def run_walk_forward_backtest(
     request: WalkForwardReplayRequest,
     market_data_provider=Depends(get_backtest_market_data_provider),
+    db=Depends(get_db),
 ):
     candles = await _resolve_candles(request, market_data_provider)
     if len(candles) <= request.lookback_bars:
         raise HTTPException(status_code=400, detail="Not enough candles for requested lookback")
+    repository = RecommendationRepository(db) if request.persist_recommendations else None
     result = run_walk_forward_replay(
         ticker=request.ticker,
         candles=candles,
@@ -40,6 +45,7 @@ async def run_walk_forward_backtest(
         market_context=request.market_context,
         lookback_bars=request.lookback_bars,
         horizon_bars=request.horizon_bars,
+        recommendation_repository=repository,
     )
     result["data_source"] = request.source or "request_payload"
     result["source_candle_count"] = len(candles)
