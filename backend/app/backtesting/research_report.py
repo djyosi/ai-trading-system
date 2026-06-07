@@ -30,6 +30,7 @@ def build_batch_research_report(batch_result, top_n=5):
     top_segments = _top_segments(batch_result.get("aggregate_threshold_tuning_by_segment") or {}, top_n)
     recommendation_diagnostics = _recommendation_diagnostics(batch_result.get("results") or {})
     ticker_diagnostics = _ticker_diagnostics(batch_result.get("results") or {}, top_n)
+    _append_actionability_warnings(warnings, recommendation_diagnostics)
 
     return {
         "status": "research_ready" if best_threshold is not None else "needs_more_data",
@@ -43,6 +44,21 @@ def build_batch_research_report(batch_result, top_n=5):
         "ticker_diagnostics": ticker_diagnostics,
         "warnings": warnings,
     }
+
+
+def _append_actionability_warnings(warnings, diagnostics, min_actionable_rate=0.5):
+    total = diagnostics.get("total_recommendations", 0)
+    if not total:
+        return
+    actionable = diagnostics.get("actionable_total", 0)
+    actionable_rate = actionable / total
+    if actionable_rate >= min_actionable_rate:
+        return
+    warnings.append(f"Low actionability: {actionable}/{total} recommendations were actionable ({actionable_rate:.2%})")
+    no_trade_reasons = diagnostics.get("no_trade_reasons") or []
+    if no_trade_reasons:
+        top_reason = no_trade_reasons[0]
+        warnings.append(f"Most common no-trade reason: {top_reason['reason']} ({top_reason['count']})")
 
 
 def _ticker_diagnostics(results, top_n):

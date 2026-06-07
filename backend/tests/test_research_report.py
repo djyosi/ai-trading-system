@@ -169,6 +169,28 @@ def test_batch_research_report_summarizes_ticker_diagnostics():
     ]
 
 
+def test_batch_research_report_warns_when_actionability_is_low():
+    items = [
+        {"recommendation": {"status": "no_trade", "reject_reasons": ["liquidity_score_below_min"]}},
+        {"recommendation": {"status": "no_trade", "reject_reasons": ["score_below_actionable_threshold"]}},
+        {"recommendation": {"status": "active_watch", "reject_reasons": []}},
+    ]
+    batch = {
+        "tickers_total": 1,
+        "tickers_completed": 1,
+        "tickers_failed": 0,
+        "evaluated_bars_total": 3,
+        "results": {"AAPL": {**_result("AAPL", closed_total=0, expectancy_r=None, win_rate=None), "items": items}},
+        "errors": {},
+        "aggregate_threshold_sweep": {"best_threshold": None, "min_trades": 5},
+    }
+
+    report = build_batch_research_report(batch)
+
+    assert "Low actionability: 1/3 recommendations were actionable (33.33%)" in report["warnings"]
+    assert "Most common no-trade reason: liquidity_score_below_min (1)" in report["warnings"]
+
+
 def test_batch_research_report_flags_insufficient_threshold_sample():
     batch = {
         "tickers_total": 1,
