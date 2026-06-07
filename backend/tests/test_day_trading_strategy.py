@@ -110,6 +110,53 @@ def test_custom_actionable_threshold_can_promote_research_setups_without_changin
     assert research_result["status"] == "active_watch"
 
 
+def test_bearish_catalyst_is_no_trade_until_short_model_exists():
+    result = score_day_trade_setup(
+        ticker="AAPL",
+        features={
+            "gap_percent": 2,
+            "relative_volume": 4,
+            "liquidity_score": 95,
+            "price": 210,
+            "spread_percent": 0.03,
+            "current_price": 212,
+            "vwap": 211,
+        },
+        catalyst={"signal": "bearish", "score": 25, "catalyst_type": "analyst_downgrade"},
+        market_context={"risk_context": "supportive"},
+        actionable_score_threshold=50,
+    )
+
+    assert result["direction"] == "short_watch"
+    assert result["strategy"] == "vwap_hold_reclaim"
+    assert result["strategy_segment"] == "vwap_hold_reclaim|analyst_downgrade"
+    assert result["status"] == "no_trade"
+    assert "bearish_catalyst_requires_short_model" in result["reject_reasons"]
+    assert "short_model_not_implemented" in result["warnings"]
+
+
+def test_contract_win_vwap_reclaim_is_tagged_as_research_supported_segment():
+    result = score_day_trade_setup(
+        ticker="AAPL",
+        features={
+            "gap_percent": 1,
+            "relative_volume": 3,
+            "liquidity_score": 95,
+            "price": 210,
+            "spread_percent": 0.03,
+            "current_price": 212,
+            "vwap": 211,
+        },
+        catalyst={"signal": "bullish", "score": 65, "catalyst_type": "contract_win"},
+        market_context={"risk_context": "supportive"},
+    )
+
+    assert result["strategy"] == "vwap_hold_reclaim"
+    assert result["strategy_segment"] == "vwap_hold_reclaim|contract_win"
+    assert result["status"] == "active_watch"
+    assert result["research_tags"] == ["segment_edge_candidate"]
+
+
 def test_risk_off_market_context_caps_status_to_caution():
     result = score_day_trade_setup(
         ticker="AAPL",

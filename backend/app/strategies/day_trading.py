@@ -1,6 +1,10 @@
 MIN_PRICE = 5
 MIN_LIQUIDITY_SCORE = 60
 MAX_SPREAD_PERCENT = 0.75
+RESEARCH_SUPPORTED_SEGMENTS = {
+    ("vwap_hold_reclaim", "contract_win"),
+    ("catalyst_momentum_gap_and_go", "analyst_upgrade"),
+}
 
 
 def score_day_trade_setup(ticker, features, catalyst, market_context, actionable_score_threshold=70):
@@ -10,12 +14,16 @@ def score_day_trade_setup(ticker, features, catalyst, market_context, actionable
         warnings.append("market_context_risk_off")
 
     strategy = _select_strategy(features, catalyst)
+    strategy_segment = _strategy_segment(strategy, catalyst)
+    research_tags = _apply_segment_policy(strategy, catalyst, reject_reasons, warnings)
     setup_score = _calculate_score(features, catalyst, market_context, strategy)
     status = _status(setup_score, reject_reasons, warnings, actionable_score_threshold)
 
     return {
         "ticker": ticker,
         "strategy": strategy,
+        "strategy_segment": strategy_segment,
+        "research_tags": research_tags,
         "direction": "long" if catalyst.get("signal") != "bearish" else "short_watch",
         "setup_score": setup_score,
         "confidence": _confidence(setup_score),
@@ -49,6 +57,23 @@ def _select_strategy(features, catalyst):
     if current_price is not None and features.get("vwap") is not None and current_price >= features["vwap"]:
         return "vwap_hold_reclaim"
     return "high_relative_volume_breakout"
+
+
+def _strategy_segment(strategy, catalyst):
+    return f"{strategy}|{catalyst.get('catalyst_type') or 'unknown'}"
+
+
+def _apply_segment_policy(strategy, catalyst, reject_reasons, warnings):
+    catalyst_type = catalyst.get("catalyst_type") or "unknown"
+    tags = []
+    if catalyst.get("signal") == "bearish":
+        reject_reasons.append("bearish_catalyst_requires_short_model")
+        warnings.append("short_model_not_implemented")
+    if (strategy, catalyst_type) in RESEARCH_SUPPORTED_SEGMENTS and catalyst.get("signal") != "bearish":
+        tags.append("segment_edge_candidate")
+    if catalyst_type == "unknown":
+        warnings.append("unknown_catalyst_requires_confirmation")
+    return tags
 
 
 def _calculate_score(features, catalyst, market_context, strategy):

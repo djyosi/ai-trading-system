@@ -98,6 +98,27 @@ def test_recommendation_uses_custom_actionable_threshold_for_research_runs():
     assert recommendation["entry_zone"] == [209.88, 214.12]
 
 
+def test_recommendation_exposes_research_segment_metadata():
+    recommendation = build_recommendation(
+        ticker="AAPL",
+        features={
+            "gap_percent": 1,
+            "relative_volume": 3,
+            "liquidity_score": 95,
+            "price": 210,
+            "spread_percent": 0.03,
+            "current_price": 212,
+            "vwap": 211,
+        },
+        catalyst={"catalyst_type": "contract_win", "signal": "bullish", "score": 65, "strength": "medium"},
+        market_context={"risk_context": "supportive"},
+    )
+
+    assert recommendation["strategy_segment"] == "vwap_hold_reclaim|contract_win"
+    assert recommendation["research_tags"] == ["segment_edge_candidate"]
+    assert "research-supported segment" in recommendation["reason"]
+
+
 def test_recommendation_contains_structured_input_snapshots_for_learning():
     features = {"gap_percent": 1.2, "relative_volume": 2.5, "liquidity_score": 100, "price": 210, "spread_percent": 0.03, "current_price": 212, "opening_range_high": 211.5, "vwap": 211}
     catalyst = {"catalyst_type": "unknown", "signal": "neutral", "score": 0, "strength": "weak"}

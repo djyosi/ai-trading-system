@@ -21,6 +21,8 @@ def build_recommendation(ticker, features, catalyst, market_context, actionable_
         "setup_score": strategy_result["setup_score"],
         "confidence": strategy_result["confidence"],
         "strategy": strategy_result["strategy"],
+        "strategy_segment": strategy_result["strategy_segment"],
+        "research_tags": strategy_result["research_tags"],
         "entry_trigger": strategy_result["entry_trigger"],
         "entry_zone": trade_plan["entry_zone"],
         "stop_loss": trade_plan["stop_loss"],
@@ -76,6 +78,8 @@ def _build_reason(strategy_result, features, catalyst, market_context):
     else:
         parts.append("Technical setup without a strong catalyst")
 
+    if "segment_edge_candidate" in strategy_result.get("research_tags", []):
+        parts.append("research-supported segment")
     if features.get("gap_percent") is not None:
         parts.append(f"gap {features['gap_percent']}%")
     if features.get("relative_volume") is not None:
