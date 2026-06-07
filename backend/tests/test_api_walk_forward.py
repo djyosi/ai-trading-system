@@ -232,6 +232,40 @@ def test_batch_backtest_api_can_use_liquid_research_universe_preset():
     app.dependency_overrides.clear()
 
 
+def test_batch_backtest_api_can_use_broad_liquid_research_universe_preset():
+    class FakeProvider:
+        def __init__(self):
+            self.calls = []
+
+        async def get_daily_candles(self, ticker, start, end):
+            self.calls.append(ticker)
+            return [_candle(i, 100 + i, 99 + i, 99.5 + i) for i in range(1, 7)]
+
+    provider = FakeProvider()
+    app.dependency_overrides[get_backtest_market_data_provider] = lambda: provider
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/backtests/batch",
+        json={
+            "universe_preset": "liquid_research_100",
+            "start": "2025-01-01",
+            "end": "2025-02-01",
+            "lookback_bars": 3,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["universe_preset"] == "liquid_research_100"
+    assert payload["tickers_total"] == 100
+    assert provider.calls[:5] == ["AAPL", "MSFT", "NVDA", "TSLA", "AMD"]
+    assert provider.calls[49] == "DIA"
+    assert provider.calls[-1] == "ABNB"
+    assert len(set(provider.calls)) == 100
+    app.dependency_overrides.clear()
+
+
 def test_batch_backtest_api_rejects_unknown_universe_preset():
     client = TestClient(app)
 
