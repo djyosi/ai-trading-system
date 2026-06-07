@@ -389,6 +389,56 @@ def test_batch_backtest_api_can_return_research_report():
     app.dependency_overrides.clear()
 
 
+def test_batch_backtest_api_can_fetch_provider_market_context():
+    class FakeProvider:
+        def __init__(self):
+            self.calls = []
+
+        async def get_daily_candles(self, ticker, start, end):
+            self.calls.append({"ticker": ticker, "start": start, "end": end})
+            if ticker == "SPY":
+                return [_candle(i, 100 + i, 99 + i, 100 + i) for i in range(1, 8)]
+            if ticker == "QQQ":
+                return [_candle(i, 200 + i * 2, 199 + i * 2, 200 + i * 2) for i in range(1, 8)]
+            if ticker == "IWM":
+                return [_candle(i, 190, 189, 190) for i in range(1, 8)]
+            return [_candle(i, 10 + i, 9 + i, 9.5 + i) for i in range(1, 8)]
+
+    provider = FakeProvider()
+    app.dependency_overrides[get_backtest_market_data_provider] = lambda: provider
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/backtests/batch",
+        json={
+            "tickers": ["AAPL"],
+            "start": "2025-01-01",
+            "end": "2025-02-01",
+            "lookback_bars": 3,
+            "horizon_bars": 1,
+            "include_market_context": True,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["market_context"] == {
+        "spy_trend": "up",
+        "qqq_trend": "up",
+        "iwm_trend": "neutral",
+        "risk_context": "supportive",
+    }
+    assert payload["market_context_source"] == "provider_etfs"
+    first = payload["results"]["AAPL"]["items"][0]
+    assert first["recommendation"]["inputs"]["market_context"]["risk_context"] == "supportive"
+    assert provider.calls[:3] == [
+        {"ticker": "SPY", "start": "2025-01-01", "end": "2025-02-01"},
+        {"ticker": "QQQ", "start": "2025-01-01", "end": "2025-02-01"},
+        {"ticker": "IWM", "start": "2025-01-01", "end": "2025-02-01"},
+    ]
+    app.dependency_overrides.clear()
+
+
 def test_batch_backtest_api_can_fetch_provider_news_catalysts_per_ticker():
     class FakeProvider:
         def __init__(self):

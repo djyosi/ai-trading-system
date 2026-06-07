@@ -8,6 +8,7 @@ from app.backtesting.research_report import build_batch_research_report
 from app.backtesting.threshold_sweep import DEFAULT_SCORE_THRESHOLDS, sweep_score_thresholds, tune_thresholds_by_segment
 from app.backtesting.walk_forward import run_walk_forward_replay
 from app.db.session import get_db
+from app.features.market_context import summarize_market_context
 from app.providers.massive import MassiveProvider
 from app.repositories.recommendations import RecommendationRepository
 from app.universe.presets import resolve_universe_preset
@@ -40,6 +41,7 @@ class BatchBacktestRequest(BaseModel):
     end: str
     catalysts_by_ticker: dict[str, list[dict[str, Any]]] = Field(default_factory=dict)
     market_context: dict[str, Any] = Field(default_factory=dict)
+    include_market_context: bool = False
     lookback_bars: int = Field(default=20, ge=1)
     horizon_bars: int = Field(default=5, ge=1)
     include_threshold_sweep: bool = False
@@ -101,19 +103,22 @@ async def run_batch_backtest(request: BatchBacktestRequest, market_data_provider
         for ticker, catalysts in fetched.items():
             catalysts_by_ticker[ticker] = [*catalysts_by_ticker.get(ticker, []), *catalysts]
             news_catalysts_fetched += len(catalysts)
+    market_context = await _resolve_batch_market_context(request, market_data_provider)
     result = await run_historical_batch(
         tickers=tickers,
         market_data_provider=market_data_provider,
         start=request.start,
         end=request.end,
         catalysts_by_ticker=catalysts_by_ticker,
-        market_context=request.market_context,
+        market_context=market_context,
         lookback_bars=request.lookback_bars,
         horizon_bars=request.horizon_bars,
         catalyst_max_age_minutes=request.catalyst_max_age_minutes,
         actionable_score_threshold=request.actionable_score_threshold,
     )
     result["news_catalysts_fetched"] = news_catalysts_fetched
+    result["market_context"] = market_context
+    result["market_context_source"] = "provider_etfs" if request.include_market_context else "request_payload"
     if request.universe_preset:
         result["universe_preset"] = request.universe_preset
     if request.include_threshold_sweep or request.include_research_report:
@@ -137,6 +142,16 @@ def _resolve_batch_tickers(request):
     if not deduped:
         raise ValueError("Either tickers or universe_preset is required")
     return deduped
+
+
+async def _resolve_batch_market_context(request, market_data_provider):
+    if not request.include_market_context:
+        return request.market_context
+    etf_candles = {
+        symbol: await market_data_provider.get_daily_candles(symbol, request.start, request.end)
+        for symbol in ["SPY", "QQQ", "IWM"]
+    }
+    return summarize_market_context(etf_candles)
 
 
 async def _fetch_news_catalysts(tickers, start, end, market_data_provider):
