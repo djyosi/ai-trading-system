@@ -96,6 +96,35 @@ def test_batch_research_report_ranks_strategy_catalyst_segments():
     ]
 
 
+def test_batch_research_report_summarizes_no_trade_reasons():
+    no_trade_items = [
+        {"recommendation": {"status": "no_trade", "reject_reasons": ["liquidity_score_below_min"]}},
+        {"recommendation": {"status": "no_trade", "reject_reasons": ["price_below_min", "liquidity_score_below_min"]}},
+        {"recommendation": {"status": "active_watch", "reject_reasons": []}},
+    ]
+    batch = {
+        "tickers_total": 1,
+        "tickers_completed": 1,
+        "tickers_failed": 0,
+        "evaluated_bars_total": 3,
+        "results": {"AAPL": {**_result("AAPL", closed_total=0, expectancy_r=None, win_rate=None), "items": no_trade_items}},
+        "errors": {},
+        "aggregate_threshold_sweep": {"best_threshold": None, "min_trades": 5},
+    }
+
+    report = build_batch_research_report(batch)
+
+    assert report["recommendation_diagnostics"] == {
+        "total_recommendations": 3,
+        "actionable_total": 1,
+        "no_trade_total": 2,
+        "no_trade_reasons": [
+            {"reason": "liquidity_score_below_min", "count": 2},
+            {"reason": "price_below_min", "count": 1},
+        ],
+    }
+
+
 def test_batch_research_report_flags_insufficient_threshold_sample():
     batch = {
         "tickers_total": 1,

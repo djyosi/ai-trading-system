@@ -28,6 +28,7 @@ def build_batch_research_report(batch_result, top_n=5):
     )[:top_n]
 
     top_segments = _top_segments(batch_result.get("aggregate_threshold_tuning_by_segment") or {}, top_n)
+    recommendation_diagnostics = _recommendation_diagnostics(batch_result.get("results") or {})
 
     return {
         "status": "research_ready" if best_threshold is not None else "needs_more_data",
@@ -37,7 +38,32 @@ def build_batch_research_report(batch_result, top_n=5):
         "top_symbols": top_symbols,
         "weak_symbols": weak_symbols,
         "top_segments": top_segments,
+        "recommendation_diagnostics": recommendation_diagnostics,
         "warnings": warnings,
+    }
+
+
+def _recommendation_diagnostics(results):
+    total = 0
+    no_trade_total = 0
+    reasons = {}
+    for result in results.values():
+        for item in result.get("items", []):
+            recommendation = item.get("recommendation") or {}
+            total += 1
+            if recommendation.get("status") != "no_trade":
+                continue
+            no_trade_total += 1
+            for reason in recommendation.get("reject_reasons") or ["score_below_actionable_threshold"]:
+                reasons[reason] = reasons.get(reason, 0) + 1
+    return {
+        "total_recommendations": total,
+        "actionable_total": total - no_trade_total,
+        "no_trade_total": no_trade_total,
+        "no_trade_reasons": [
+            {"reason": reason, "count": count}
+            for reason, count in sorted(reasons.items(), key=lambda item: (-item[1], item[0]))
+        ],
     }
 
 
