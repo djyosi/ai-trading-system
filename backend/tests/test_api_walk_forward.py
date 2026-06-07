@@ -200,6 +200,50 @@ def test_walk_forward_api_can_persist_replay_recommendations_and_outcomes():
         app.dependency_overrides.clear()
 
 
+def test_batch_backtest_api_can_use_liquid_research_universe_preset():
+    class FakeProvider:
+        def __init__(self):
+            self.calls = []
+
+        async def get_daily_candles(self, ticker, start, end):
+            self.calls.append(ticker)
+            return [_candle(i, 100 + i, 99 + i, 99.5 + i) for i in range(1, 7)]
+
+    provider = FakeProvider()
+    app.dependency_overrides[get_backtest_market_data_provider] = lambda: provider
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/backtests/batch",
+        json={
+            "universe_preset": "liquid_research_25",
+            "start": "2025-01-01",
+            "end": "2025-02-01",
+            "lookback_bars": 3,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["universe_preset"] == "liquid_research_25"
+    assert payload["tickers_total"] == 25
+    assert provider.calls[:5] == ["AAPL", "MSFT", "NVDA", "TSLA", "AMD"]
+    assert provider.calls[-1] == "XOM"
+    app.dependency_overrides.clear()
+
+
+def test_batch_backtest_api_rejects_unknown_universe_preset():
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/backtests/batch",
+        json={"universe_preset": "not_real", "start": "2025-01-01", "end": "2025-02-01"},
+    )
+
+    assert response.status_code == 400
+    assert "Unknown universe preset 'not_real'" in response.json()["detail"]
+
+
 def test_batch_backtest_api_runs_multiple_tickers_with_provider_dependency():
     class FakeProvider:
         async def get_daily_candles(self, ticker, start, end):

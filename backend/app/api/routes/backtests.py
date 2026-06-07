@@ -10,6 +10,7 @@ from app.backtesting.walk_forward import run_walk_forward_replay
 from app.db.session import get_db
 from app.providers.massive import MassiveProvider
 from app.repositories.recommendations import RecommendationRepository
+from app.universe.presets import resolve_universe_preset
 
 router = APIRouter(prefix="/backtests", tags=["backtests"])
 
@@ -33,7 +34,8 @@ class WalkForwardReplayRequest(BaseModel):
 
 
 class BatchBacktestRequest(BaseModel):
-    tickers: list[str] = Field(min_length=1)
+    tickers: list[str] = Field(default_factory=list)
+    universe_preset: Optional[str] = None
     start: str
     end: str
     catalysts_by_ticker: dict[str, list[dict[str, Any]]] = Field(default_factory=dict)
@@ -88,7 +90,10 @@ async def run_walk_forward_backtest(
 
 @router.post("/batch")
 async def run_batch_backtest(request: BatchBacktestRequest, market_data_provider=Depends(get_backtest_market_data_provider)):
-    tickers = [ticker.upper() for ticker in request.tickers]
+    try:
+        tickers = _resolve_batch_tickers(request)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
     catalysts_by_ticker = dict(request.catalysts_by_ticker)
     news_catalysts_fetched = 0
     if request.include_news_catalysts:
@@ -109,6 +114,8 @@ async def run_batch_backtest(request: BatchBacktestRequest, market_data_provider
         actionable_score_threshold=request.actionable_score_threshold,
     )
     result["news_catalysts_fetched"] = news_catalysts_fetched
+    if request.universe_preset:
+        result["universe_preset"] = request.universe_preset
     if request.include_threshold_sweep or request.include_research_report:
         items = [item for ticker_result in result["results"].values() for item in ticker_result["items"]]
         result["aggregate_threshold_sweep"] = sweep_score_thresholds(
@@ -120,6 +127,16 @@ async def run_batch_backtest(request: BatchBacktestRequest, market_data_provider
     if request.include_research_report:
         result["research_report"] = build_batch_research_report(result)
     return result
+
+
+def _resolve_batch_tickers(request):
+    tickers = [ticker.upper() for ticker in request.tickers]
+    if request.universe_preset:
+        tickers = [*tickers, *resolve_universe_preset(request.universe_preset)]
+    deduped = list(dict.fromkeys(tickers))
+    if not deduped:
+        raise ValueError("Either tickers or universe_preset is required")
+    return deduped
 
 
 async def _fetch_news_catalysts(tickers, start, end, market_data_provider):
