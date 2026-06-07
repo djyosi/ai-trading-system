@@ -220,6 +220,34 @@ def test_batch_backtest_api_runs_multiple_tickers_with_provider_dependency():
     app.dependency_overrides.clear()
 
 
+def test_batch_backtest_api_can_return_aggregate_threshold_tuning():
+    class FakeProvider:
+        async def get_daily_candles(self, ticker, start, end):
+            return [_candle(i, 10 + i, 9 + i, 9.5 + i) for i in range(1, 8)]
+
+    app.dependency_overrides[get_backtest_market_data_provider] = lambda: FakeProvider()
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/backtests/batch",
+        json={
+            "tickers": ["AAPL", "MSFT"],
+            "start": "2025-01-01",
+            "end": "2025-02-01",
+            "lookback_bars": 3,
+            "horizon_bars": 1,
+            "include_threshold_sweep": True,
+            "thresholds": [60, 80],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["aggregate_threshold_sweep"]["thresholds"][0]["threshold"] == 60
+    assert "best_threshold" in payload["aggregate_threshold_sweep"]
+    app.dependency_overrides.clear()
+
+
 def test_walk_forward_api_rejects_too_few_candles_for_lookback():
     client = TestClient(app)
 

@@ -37,6 +37,9 @@ class BatchBacktestRequest(BaseModel):
     market_context: dict[str, Any] = Field(default_factory=dict)
     lookback_bars: int = Field(default=20, ge=1)
     horizon_bars: int = Field(default=5, ge=1)
+    include_threshold_sweep: bool = False
+    thresholds: list[int] = Field(default_factory=lambda: [50, 60, 70, 80, 85, 90])
+    min_trades: int = Field(default=1, ge=1)
 
 
 def get_backtest_market_data_provider():
@@ -76,7 +79,7 @@ async def run_walk_forward_backtest(
 
 @router.post("/batch")
 async def run_batch_backtest(request: BatchBacktestRequest, market_data_provider=Depends(get_backtest_market_data_provider)):
-    return await run_historical_batch(
+    result = await run_historical_batch(
         tickers=[ticker.upper() for ticker in request.tickers],
         market_data_provider=market_data_provider,
         start=request.start,
@@ -86,6 +89,15 @@ async def run_batch_backtest(request: BatchBacktestRequest, market_data_provider
         lookback_bars=request.lookback_bars,
         horizon_bars=request.horizon_bars,
     )
+    if request.include_threshold_sweep:
+        items = [item for ticker_result in result["results"].values() for item in ticker_result["items"]]
+        result["aggregate_threshold_sweep"] = sweep_score_thresholds(
+            items, thresholds=request.thresholds, min_trades=request.min_trades
+        )
+        result["aggregate_threshold_tuning_by_segment"] = tune_thresholds_by_segment(
+            items, thresholds=request.thresholds, min_trades=request.min_trades
+        )
+    return result
 
 
 async def _resolve_candles(request, market_data_provider):
