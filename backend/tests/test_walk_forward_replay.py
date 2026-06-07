@@ -144,6 +144,34 @@ def test_walk_forward_replay_can_use_lower_research_actionable_threshold():
     assert research_result["items"][0]["recommendation"]["status"] == "active_watch"
 
 
+def test_walk_forward_replay_uses_timestamp_specific_market_context():
+    candles = [
+        _candle(1, 209.0, 211.0, 208.0, 210.0),
+        _candle(2, 210.0, 212.0, 209.0, 211.0),
+        _candle(3, 211.0, 213.0, 210.0, 212.0),
+        _candle(4, 212.5, 214.0, 211.5, 213.0),
+        _candle(5, 213.0, 216.5, 212.0, 216.0),
+    ]
+
+    result = run_walk_forward_replay(
+        ticker="AAPL",
+        candles=candles,
+        catalysts=[],
+        market_context={"risk_context": "mixed"},
+        market_context_by_timestamp={
+            candles[3]["timestamp_ms"]: {"risk_context": "supportive", "spy_trend": "up", "qqq_trend": "up"},
+            candles[4]["timestamp_ms"]: {"risk_context": "risk_off", "spy_trend": "down", "qqq_trend": "down"},
+        },
+        lookback_bars=3,
+        horizon_bars=1,
+        actionable_score_threshold=20,
+    )
+
+    assert result["items"][0]["recommendation"]["inputs"]["market_context"]["risk_context"] == "supportive"
+    assert result["items"][1]["recommendation"]["inputs"]["market_context"]["risk_context"] == "risk_off"
+    assert result["items"][1]["recommendation"]["status"] == "caution"
+
+
 def test_walk_forward_replay_can_persist_recommendations_and_outcomes():
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker

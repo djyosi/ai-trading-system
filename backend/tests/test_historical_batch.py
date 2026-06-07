@@ -84,6 +84,35 @@ async def test_historical_batch_passes_actionable_score_threshold_to_replay():
 
 
 @pytest.mark.asyncio
+async def test_historical_batch_passes_timestamp_market_context_to_replay():
+    class FakeProvider:
+        async def get_daily_candles(self, ticker, start, end):
+            return [
+                {"timestamp_ms": i * 86_400_000, "open": 210 + i, "high": 210.5 + i, "low": 209.5 + i, "close": 210 + i, "volume": 5_000_000}
+                for i in range(1, 6)
+            ]
+
+    result = await run_historical_batch(
+        tickers=["AAPL"],
+        market_data_provider=FakeProvider(),
+        start="2026-01-01",
+        end="2026-01-31",
+        market_context={"risk_context": "mixed"},
+        market_context_by_timestamp={
+            4 * 86_400_000: {"risk_context": "supportive", "spy_trend": "up", "qqq_trend": "up"},
+            5 * 86_400_000: {"risk_context": "risk_off", "spy_trend": "down", "qqq_trend": "down"},
+        },
+        lookback_bars=3,
+        horizon_bars=1,
+        actionable_score_threshold=20,
+    )
+
+    items = result["results"]["AAPL"]["items"]
+    assert items[0]["recommendation"]["inputs"]["market_context"]["risk_context"] == "supportive"
+    assert items[1]["recommendation"]["inputs"]["market_context"]["risk_context"] == "risk_off"
+
+
+@pytest.mark.asyncio
 async def test_historical_batch_keeps_going_when_one_ticker_fails():
     provider = FakeProvider()
 

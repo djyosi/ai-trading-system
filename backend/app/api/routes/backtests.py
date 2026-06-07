@@ -103,7 +103,7 @@ async def run_batch_backtest(request: BatchBacktestRequest, market_data_provider
         for ticker, catalysts in fetched.items():
             catalysts_by_ticker[ticker] = [*catalysts_by_ticker.get(ticker, []), *catalysts]
             news_catalysts_fetched += len(catalysts)
-    market_context = await _resolve_batch_market_context(request, market_data_provider)
+    market_context, market_context_by_timestamp = await _resolve_batch_market_context(request, market_data_provider)
     result = await run_historical_batch(
         tickers=tickers,
         market_data_provider=market_data_provider,
@@ -111,6 +111,7 @@ async def run_batch_backtest(request: BatchBacktestRequest, market_data_provider
         end=request.end,
         catalysts_by_ticker=catalysts_by_ticker,
         market_context=market_context,
+        market_context_by_timestamp=market_context_by_timestamp,
         lookback_bars=request.lookback_bars,
         horizon_bars=request.horizon_bars,
         catalyst_max_age_minutes=request.catalyst_max_age_minutes,
@@ -146,12 +147,35 @@ def _resolve_batch_tickers(request):
 
 async def _resolve_batch_market_context(request, market_data_provider):
     if not request.include_market_context:
-        return request.market_context
+        return request.market_context, None
     etf_candles = {
         symbol: await market_data_provider.get_daily_candles(symbol, request.start, request.end)
         for symbol in ["SPY", "QQQ", "IWM"]
     }
-    return summarize_market_context(etf_candles)
+    context_by_timestamp = _market_context_by_timestamp(etf_candles)
+    latest_timestamp = max(context_by_timestamp) if context_by_timestamp else None
+    latest_context = context_by_timestamp.get(latest_timestamp, summarize_market_context(etf_candles))
+    return latest_context, context_by_timestamp
+
+
+def _market_context_by_timestamp(etf_candles):
+    timestamps = sorted(
+        {
+            candle.get("timestamp_ms")
+            for candles in etf_candles.values()
+            for candle in candles
+            if candle.get("timestamp_ms") is not None
+        }
+    )
+    return {
+        timestamp: summarize_market_context(
+            {
+                symbol: [candle for candle in candles if (candle.get("timestamp_ms") or 0) <= timestamp]
+                for symbol, candles in etf_candles.items()
+            }
+        )
+        for timestamp in timestamps
+    }
 
 
 async def _fetch_news_catalysts(tickers, start, end, market_data_provider):

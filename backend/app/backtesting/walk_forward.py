@@ -10,6 +10,7 @@ def run_walk_forward_replay(
     candles,
     catalysts=None,
     market_context=None,
+    market_context_by_timestamp=None,
     lookback_bars=20,
     horizon_bars=5,
     recommendation_repository=None,
@@ -29,12 +30,17 @@ def run_walk_forward_replay(
         visible_candles = [*lookback, current]
         future_candles = sorted_candles[index + 1 : index + 1 + horizon_bars]
 
+        decision_market_context = _market_context_for_timestamp(
+            current_timestamp,
+            market_context,
+            market_context_by_timestamp,
+        )
         recommendation = _build_historical_recommendation(
             ticker=ticker,
             current_candle=current,
             visible_candles=visible_candles,
             visible_catalysts=_visible_catalysts(catalysts, current_timestamp, catalyst_max_age_minutes),
-            market_context=market_context,
+            market_context=decision_market_context,
             actionable_score_threshold=actionable_score_threshold,
         )
         outcome = label_recommendation_outcome(
@@ -91,6 +97,15 @@ def _build_historical_recommendation(
         "visible_candle_count": len(visible_candles),
     }
     return recommendation
+
+
+def _market_context_for_timestamp(timestamp_ms, default_context, market_context_by_timestamp):
+    if not market_context_by_timestamp or timestamp_ms is None:
+        return default_context
+    eligible_timestamps = [int(ts) for ts in market_context_by_timestamp if int(ts) <= timestamp_ms]
+    if not eligible_timestamps:
+        return default_context
+    return market_context_by_timestamp[max(eligible_timestamps)]
 
 
 def _snapshot_from_candle(ticker, candle, previous_close):

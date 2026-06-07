@@ -430,12 +430,48 @@ def test_batch_backtest_api_can_fetch_provider_market_context():
     }
     assert payload["market_context_source"] == "provider_etfs"
     first = payload["results"]["AAPL"]["items"][0]
-    assert first["recommendation"]["inputs"]["market_context"]["risk_context"] == "supportive"
+    later = payload["results"]["AAPL"]["items"][1]
+    assert first["recommendation"]["inputs"]["market_context"]["risk_context"] == "mixed"
+    assert later["recommendation"]["inputs"]["market_context"]["risk_context"] == "supportive"
     assert provider.calls[:3] == [
         {"ticker": "SPY", "start": "2025-01-01", "end": "2025-02-01"},
         {"ticker": "QQQ", "start": "2025-01-01", "end": "2025-02-01"},
         {"ticker": "IWM", "start": "2025-01-01", "end": "2025-02-01"},
     ]
+    app.dependency_overrides.clear()
+
+
+def test_batch_backtest_api_builds_timestamp_market_context_from_provider_etfs():
+    class FakeProvider:
+        async def get_daily_candles(self, ticker, start, end):
+            if ticker in {"SPY", "QQQ"}:
+                closes = [100, 101, 102, 103, 104, 90, 89, 88]
+                return [_candle(i, close + 0.2, close + 0.5, close) for i, close in enumerate(closes, start=1)]
+            if ticker == "IWM":
+                return [_candle(i, 190, 189, 190) for i in range(1, 9)]
+            return [_candle(i, 210 + i, 209 + i, 210 + i) for i in range(1, 9)]
+
+    app.dependency_overrides[get_backtest_market_data_provider] = lambda: FakeProvider()
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/backtests/batch",
+        json={
+            "tickers": ["AAPL"],
+            "start": "2025-01-01",
+            "end": "2025-02-01",
+            "lookback_bars": 3,
+            "horizon_bars": 1,
+            "include_market_context": True,
+            "actionable_score_threshold": 20,
+        },
+    )
+
+    assert response.status_code == 200
+    items = response.json()["results"]["AAPL"]["items"]
+    assert items[1]["recommendation"]["inputs"]["market_context"]["risk_context"] == "supportive"
+    assert items[2]["recommendation"]["inputs"]["market_context"]["risk_context"] == "risk_off"
+    assert items[2]["recommendation"]["status"] == "caution"
     app.dependency_overrides.clear()
 
 
