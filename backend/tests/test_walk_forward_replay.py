@@ -88,6 +88,31 @@ def test_walk_forward_replay_prevents_lookahead_in_features_and_catalysts():
     assert first["outcome"]["target_hit"] is True
 
 
+def test_walk_forward_replay_excludes_stale_catalysts_outside_freshness_window():
+    candles = [
+        _candle(1, 9.8, 10.0, 9.6, 9.9),
+        _candle(2, 9.9, 10.2, 9.7, 10.0),
+        _candle(3, 10.0, 10.4, 9.8, 10.1),
+        _candle(4, 10.9, 11.8, 10.7, 11.5, volume=3_200_000),
+        _candle(5, 11.6, 12.8, 11.4, 12.4, volume=2_400_000),
+    ]
+    stale_catalyst = _bullish_catalyst(candles[1]["timestamp_ms"])
+
+    result = run_walk_forward_replay(
+        ticker="PAX",
+        candles=candles,
+        catalysts=[stale_catalyst],
+        market_context={"risk_context": "supportive", "spy_trend": "up", "qqq_trend": "up"},
+        lookback_bars=3,
+        horizon_bars=1,
+        catalyst_max_age_minutes=60,
+    )
+
+    first = result["items"][0]
+    assert first["recommendation"]["inputs"]["catalyst"]["catalyst_type"] == "unknown"
+    assert first["recommendation"]["inputs"]["catalyst"]["score"] == 0
+
+
 def test_walk_forward_replay_can_persist_recommendations_and_outcomes():
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker

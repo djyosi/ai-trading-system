@@ -13,6 +13,7 @@ def run_walk_forward_replay(
     lookback_bars=20,
     horizon_bars=5,
     recommendation_repository=None,
+    catalyst_max_age_minutes=None,
 ):
     catalysts = catalysts or []
     market_context = market_context or {"risk_context": "mixed", "spy_trend": "neutral", "qqq_trend": "neutral"}
@@ -31,7 +32,7 @@ def run_walk_forward_replay(
             ticker=ticker,
             current_candle=current,
             visible_candles=visible_candles,
-            visible_catalysts=_visible_catalysts(catalysts, current_timestamp),
+            visible_catalysts=_visible_catalysts(catalysts, current_timestamp, catalyst_max_age_minutes),
             market_context=market_context,
         )
         outcome = label_recommendation_outcome(
@@ -91,10 +92,22 @@ def _snapshot_from_candle(ticker, candle, previous_close):
     }
 
 
-def _visible_catalysts(catalysts, timestamp_ms):
+def _visible_catalysts(catalysts, timestamp_ms, catalyst_max_age_minutes=None):
     if timestamp_ms is None:
         return catalysts
-    return [catalyst for catalyst in catalysts if catalyst.get("timestamp_ms") is None or catalyst.get("timestamp_ms") <= timestamp_ms]
+    visible = []
+    max_age_ms = catalyst_max_age_minutes * 60_000 if catalyst_max_age_minutes is not None else None
+    for catalyst in catalysts:
+        catalyst_timestamp = catalyst.get("timestamp_ms")
+        if catalyst_timestamp is None:
+            visible.append(catalyst)
+            continue
+        if catalyst_timestamp > timestamp_ms:
+            continue
+        if max_age_ms is not None and timestamp_ms - catalyst_timestamp > max_age_ms:
+            continue
+        visible.append(catalyst)
+    return visible
 
 
 def _normalized_historical_catalysts(catalysts, current_timestamp_ms):

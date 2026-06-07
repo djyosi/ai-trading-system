@@ -317,6 +317,66 @@ def test_batch_backtest_api_can_fetch_provider_news_catalysts_per_ticker():
     app.dependency_overrides.clear()
 
 
+def test_walk_forward_api_applies_catalyst_freshness_window():
+    client = TestClient(app)
+    candles = [
+        _candle(1, 10.0, 9.6, 9.9),
+        _candle(2, 10.2, 9.7, 10.0),
+        _candle(3, 10.4, 9.8, 10.1),
+        _candle(4, 11.8, 10.7, 11.5, volume=3_200_000),
+        _candle(5, 12.8, 11.4, 12.4, volume=2_400_000),
+    ]
+
+    response = client.post(
+        "/api/backtests/walk-forward",
+        json={
+            "ticker": "AAPL",
+            "candles": candles,
+            "catalysts": [{"type": "earnings_beat", "timestamp_ms": candles[0]["timestamp_ms"]}],
+            "market_context": {"risk_context": "supportive", "spy_trend": "up", "qqq_trend": "up"},
+            "lookback_bars": 3,
+            "horizon_bars": 1,
+            "catalyst_max_age_minutes": 60,
+        },
+    )
+
+    assert response.status_code == 200
+    first = response.json()["items"][0]
+    assert first["recommendation"]["inputs"]["catalyst"]["catalyst_type"] == "unknown"
+
+
+def test_batch_backtest_api_applies_catalyst_freshness_window():
+    class FakeProvider:
+        async def get_daily_candles(self, ticker, start, end):
+            return [
+                _candle(1, 10.0, 9.6, 9.9),
+                _candle(2, 10.2, 9.7, 10.0),
+                _candle(3, 10.4, 9.8, 10.1),
+                _candle(4, 11.8, 10.7, 11.5, volume=3_200_000),
+                _candle(5, 12.8, 11.4, 12.4, volume=2_400_000),
+            ]
+
+    app.dependency_overrides[get_backtest_market_data_provider] = lambda: FakeProvider()
+    client = TestClient(app)
+    response = client.post(
+        "/api/backtests/batch",
+        json={
+            "tickers": ["AAPL"],
+            "start": "2025-01-01",
+            "end": "2025-02-01",
+            "catalysts_by_ticker": {"AAPL": [{"type": "earnings_beat", "timestamp_ms": 86_400_000}]},
+            "lookback_bars": 3,
+            "horizon_bars": 1,
+            "catalyst_max_age_minutes": 60,
+        },
+    )
+
+    assert response.status_code == 200
+    first = response.json()["results"]["AAPL"]["items"][0]
+    assert first["recommendation"]["inputs"]["catalyst"]["catalyst_type"] == "unknown"
+    app.dependency_overrides.clear()
+
+
 def test_walk_forward_api_rejects_too_few_candles_for_lookback():
     client = TestClient(app)
 

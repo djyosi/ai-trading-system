@@ -10,6 +10,7 @@ async def run_historical_batch(
     market_context=None,
     lookback_bars=20,
     horizon_bars=5,
+    catalyst_max_age_minutes=None,
 ):
     catalysts_by_ticker = catalysts_by_ticker or {}
     results = {}
@@ -25,6 +26,7 @@ async def run_historical_batch(
                 market_context=market_context,
                 lookback_bars=lookback_bars,
                 horizon_bars=horizon_bars,
+                catalyst_max_age_minutes=catalyst_max_age_minutes,
             )
         except Exception as exc:  # noqa: BLE001 - batch jobs must isolate per-symbol provider failures
             errors[ticker] = str(exc)
