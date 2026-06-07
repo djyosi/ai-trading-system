@@ -28,6 +28,7 @@ def build_batch_research_report(batch_result, top_n=5):
     )[:top_n]
 
     top_segments = _top_segments(batch_result.get("aggregate_threshold_tuning_by_segment") or {}, top_n)
+    segment_threshold_recommendations = top_segments
     recommendation_diagnostics = _recommendation_diagnostics(batch_result.get("results") or {})
     ticker_diagnostics = _ticker_diagnostics(batch_result.get("results") or {}, top_n)
     edge_diagnostics = _edge_diagnostics(batch_result.get("results") or {}, top_n)
@@ -41,6 +42,7 @@ def build_batch_research_report(batch_result, top_n=5):
         "top_symbols": top_symbols,
         "weak_symbols": weak_symbols,
         "top_segments": top_segments,
+        "segment_threshold_recommendations": segment_threshold_recommendations,
         "recommendation_diagnostics": recommendation_diagnostics,
         "ticker_diagnostics": ticker_diagnostics,
         "edge_diagnostics": edge_diagnostics,

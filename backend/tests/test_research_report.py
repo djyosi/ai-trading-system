@@ -46,6 +46,43 @@ def test_batch_research_report_ranks_symbols_and_carries_best_threshold():
     assert "1 ticker(s) failed" in report["warnings"]
 
 
+def test_batch_research_report_surfaces_segment_threshold_recommendations_even_when_global_not_ready():
+    batch = {
+        "tickers_total": 2,
+        "tickers_completed": 2,
+        "tickers_failed": 0,
+        "evaluated_bars_total": 20,
+        "results": {},
+        "errors": {},
+        "aggregate_threshold_sweep": {"best_threshold": None, "min_trades": 5},
+        "aggregate_threshold_tuning_by_segment": {
+            "gap_and_go|contract_win": {
+                "best_threshold": {"threshold": 60, "trade_count": 5, "expectancy_r": 0.45, "win_rate": 0.6},
+                "min_trades": 5,
+            },
+            "gap_and_go|unknown": {
+                "best_threshold": None,
+                "min_trades": 5,
+            },
+        },
+    }
+
+    report = build_batch_research_report(batch)
+
+    assert report["status"] == "needs_more_data"
+    assert report["segment_threshold_recommendations"] == [
+        {
+            "segment": "gap_and_go|contract_win",
+            "strategy": "gap_and_go",
+            "catalyst_type": "contract_win",
+            "recommended_threshold": 60,
+            "trade_count": 5,
+            "expectancy_r": 0.45,
+            "win_rate": 0.6,
+        }
+    ]
+
+
 def test_batch_research_report_ranks_strategy_catalyst_segments():
     batch = {
         "tickers_total": 2,
