@@ -1,7 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 import httpx
 
+from app.catalysts.classifier import classify_catalyst
 from app.core.config import settings as default_settings
 from app.providers.market_data_base import MarketDataProvider
 
@@ -54,6 +55,23 @@ class MassiveProvider(MarketDataProvider):
         snapshot = payload.get("ticker") or payload
         return self._normalize_snapshot(snapshot)
 
+    async def get_news(self, ticker, start, end):
+        api_key = self._require_api_key()
+        response = await self.client.get(
+            "/v2/reference/news",
+            params={
+                "ticker": ticker,
+                "published_utc.gte": self._format_date(start),
+                "published_utc.lte": self._format_date(end),
+                "order": "desc",
+                "limit": 100,
+                "apiKey": api_key,
+            },
+        )
+        response.raise_for_status()
+        payload = response.json()
+        return [self._normalize_news(ticker, row) for row in payload.get("results", [])]
+
     async def _get_aggregate_candles(self, ticker, start, end, multiplier, timespan, timeframe):
         api_key = self._require_api_key()
         start_value = self._format_date(start)
@@ -98,6 +116,42 @@ class MassiveProvider(MarketDataProvider):
             "raw": snapshot,
         }
 
+    def _normalize_news(self, ticker, row):
+        headline = row.get("title") or ""
+        catalyst_type = self._infer_news_catalyst_type(headline, row.get("description"))
+        published_utc = row.get("published_utc")
+        return {
+            "provider": self.provider_name,
+            "ticker": ticker,
+            "external_id": row.get("id"),
+            "headline": headline,
+            "summary": row.get("description"),
+            "published_utc": published_utc,
+            "timestamp_ms": self._timestamp_ms_from_utc(published_utc),
+            "source": (row.get("publisher") or {}).get("name"),
+            "url": row.get("article_url"),
+            "catalyst_type": catalyst_type,
+            "raw": row,
+        }
+
+    def _infer_news_catalyst_type(self, headline, description=None):
+        text = f"{headline or ''} {description or ''}".lower()
+        if "earnings beat" in text or "beats earnings" in text or "beats estimates" in text:
+            return "earnings_beat"
+        if "raises guidance" in text or "guidance raise" in text:
+            return "guidance_raise"
+        if "cuts guidance" in text or "guidance cut" in text:
+            return "guidance_cut"
+        if "upgrade" in text:
+            return "analyst_upgrade"
+        if "downgrade" in text:
+            return "analyst_downgrade"
+        if "fda approval" in text or "approved by fda" in text:
+            return "fda_approval"
+        if "contract" in text and ("win" in text or "award" in text):
+            return "contract_win"
+        return classify_catalyst({})["catalyst_type"]
+
     def _parse_timeframe(self, timeframe):
         if timeframe.endswith("m"):
             return int(timeframe[:-1]), "minute"
@@ -111,3 +165,12 @@ class MassiveProvider(MarketDataProvider):
         if isinstance(value, datetime):
             return value.date().isoformat()
         return str(value)
+
+    def _timestamp_ms_from_utc(self, value):
+        if not value:
+            return None
+        normalized = value.replace("Z", "+00:00")
+        parsed = datetime.fromisoformat(normalized)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return int(parsed.timestamp() * 1000)

@@ -114,6 +114,36 @@ def test_walk_forward_api_requires_start_and_end_for_provider_backtests():
     assert response.json()["detail"] == "start and end are required when source is massive"
 
 
+def test_walk_forward_api_includes_threshold_sweep_when_requested():
+    client = TestClient(app)
+    candles = [
+        _candle(1, 10.0, 9.6, 9.9),
+        _candle(2, 10.2, 9.7, 10.0),
+        _candle(3, 10.4, 9.8, 10.1),
+        _candle(4, 11.8, 10.7, 11.5, volume=3_200_000),
+        _candle(5, 12.8, 11.4, 12.4, volume=2_400_000),
+    ]
+
+    response = client.post(
+        "/api/backtests/walk-forward",
+        json={
+            "ticker": "PAX",
+            "candles": candles,
+            "catalysts": [{"type": "earnings_beat", "timestamp_ms": candles[3]["timestamp_ms"]}],
+            "market_context": {"risk_context": "supportive", "spy_trend": "up", "qqq_trend": "up"},
+            "lookback_bars": 3,
+            "horizon_bars": 1,
+            "thresholds": [60, 80],
+            "include_threshold_sweep": True,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["threshold_sweep"]["thresholds"][0]["threshold"] == 60
+    assert payload["threshold_tuning_by_segment"]
+
+
 def _client_with_db():
     engine = create_engine(
         "sqlite://",
@@ -168,6 +198,26 @@ def test_walk_forward_api_can_persist_replay_recommendations_and_outcomes():
     finally:
         db.close()
         app.dependency_overrides.clear()
+
+
+def test_batch_backtest_api_runs_multiple_tickers_with_provider_dependency():
+    class FakeProvider:
+        async def get_daily_candles(self, ticker, start, end):
+            return [_candle(i, 10 + i, 9 + i, 9.5 + i) for i in range(1, 7)]
+
+    app.dependency_overrides[get_backtest_market_data_provider] = lambda: FakeProvider()
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/backtests/batch",
+        json={"tickers": ["AAPL", "MSFT"], "start": "2025-01-01", "end": "2025-02-01", "lookback_bars": 3},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["tickers_completed"] == 2
+    assert payload["evaluated_bars_total"] == 6
+    app.dependency_overrides.clear()
 
 
 def test_walk_forward_api_rejects_too_few_candles_for_lookback():
