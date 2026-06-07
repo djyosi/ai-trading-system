@@ -109,10 +109,170 @@ LIQUID_RESEARCH_100 = [
     "ABNB",
 ]
 
+SECTOR_SEMICONDUCTORS = [
+    "NVDA",
+    "AMD",
+    "AVGO",
+    "SMCI",
+    "MU",
+    "INTC",
+    "QCOM",
+    "TXN",
+    "AMAT",
+    "LRCX",
+    "TSM",
+    "ASML",
+]
+
+SECTOR_TECHNOLOGY = [
+    "AAPL",
+    "MSFT",
+    "ORCL",
+    "CRM",
+    "ADBE",
+    "NOW",
+    "SNOW",
+    "DDOG",
+    "CRWD",
+    "PANW",
+    "ZS",
+    "NET",
+    "MDB",
+    "PLTR",
+    "SHOP",
+]
+
+SECTOR_AI_MOMENTUM = [
+    "NVDA",
+    "AMD",
+    "AVGO",
+    "SMCI",
+    "PLTR",
+    "MSTR",
+    "COIN",
+    "TSLA",
+    "META",
+    "GOOGL",
+    "MSFT",
+    "AMZN",
+]
+
+SECTOR_FINANCIALS = [
+    "JPM",
+    "BAC",
+    "GS",
+    "MS",
+    "C",
+    "WFC",
+    "V",
+    "MA",
+    "PYPL",
+    "SQ",
+    "COIN",
+    "XLF",
+]
+
+SECTOR_HEALTHCARE = [
+    "LLY",
+    "UNH",
+    "JNJ",
+    "MRK",
+    "ABBV",
+    "PFE",
+    "MRNA",
+    "GILD",
+    "XLV",
+]
+
+SECTOR_ENERGY = [
+    "XOM",
+    "CVX",
+    "USO",
+    "XLE",
+    "SLB",
+    "OXY",
+    "COP",
+    "EOG",
+]
+
+SECTOR_CONSUMER = [
+    "AMZN",
+    "COST",
+    "WMT",
+    "HD",
+    "NKE",
+    "DIS",
+    "SBUX",
+    "MCD",
+    "TGT",
+    "LOW",
+    "XLY",
+]
+
+SECTOR_INDUSTRIALS = [
+    "CAT",
+    "DE",
+    "BA",
+    "GE",
+    "RTX",
+    "LMT",
+    "HON",
+    "UPS",
+    "FDX",
+    "DIA",
+]
+
+SECTOR_COMMUNICATIONS = [
+    "META",
+    "GOOGL",
+    "NFLX",
+    "DIS",
+    "T",
+    "VZ",
+    "SNAP",
+    "PINS",
+    "ROKU",
+]
+
+SECTOR_ETFS = [
+    "SPY",
+    "QQQ",
+    "IWM",
+    "DIA",
+    "XLK",
+    "XLF",
+    "XLE",
+    "XLV",
+    "XLY",
+    "XLU",
+    "SOXX",
+    "SMH",
+    "ARKK",
+    "HYG",
+    "TLT",
+    "GLD",
+    "SLV",
+    "USO",
+]
+
+SECTOR_PRESETS = {
+    "sector_ai_momentum": SECTOR_AI_MOMENTUM,
+    "sector_communications": SECTOR_COMMUNICATIONS,
+    "sector_consumer": SECTOR_CONSUMER,
+    "sector_energy": SECTOR_ENERGY,
+    "sector_etfs": SECTOR_ETFS,
+    "sector_financials": SECTOR_FINANCIALS,
+    "sector_healthcare": SECTOR_HEALTHCARE,
+    "sector_industrials": SECTOR_INDUSTRIALS,
+    "sector_semiconductors": SECTOR_SEMICONDUCTORS,
+    "sector_technology": SECTOR_TECHNOLOGY,
+}
+
 UNIVERSE_PRESETS = {
     "liquid_research_25": LIQUID_RESEARCH_25,
     "liquid_research_50": LIQUID_RESEARCH_50,
     "liquid_research_100": LIQUID_RESEARCH_100,
+    **SECTOR_PRESETS,
 }
 
 
