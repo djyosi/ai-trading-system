@@ -9,15 +9,19 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 @router.get("/ranked-recommendations")
 def ranked_recommendations(limit: int = 25, db: Session = Depends(get_db)):
-    records = (
-        db.query(RecommendationRecord)
-        .filter(RecommendationRecord.status != "no_trade")
-        .order_by(RecommendationRecord.setup_score.desc(), RecommendationRecord.created_at.desc(), RecommendationRecord.id.desc())
-        .limit(limit)
-        .all()
-    )
+    records = db.query(RecommendationRecord).filter(RecommendationRecord.status != "no_trade").all()
+    records = sorted(
+        records,
+        key=lambda record: (_rank_score(record), record.created_at, record.id),
+        reverse=True,
+    )[:limit]
     items = [_ranked_item(rank, record) for rank, record in enumerate(records, start=1)]
     return {"items_total": len(items), "items": items}
+
+
+def _rank_score(record):
+    boost = 5 if "market_context_edge_candidate" in (record.research_tags or []) else 0
+    return record.setup_score + boost
 
 
 def _ranked_item(rank, record):
@@ -29,6 +33,7 @@ def _ranked_item(rank, record):
         "ticker": record.ticker,
         "status": record.status,
         "setup_score": record.setup_score,
+        "rank_score": _rank_score(record),
         "confidence": record.confidence,
         "strategy": record.strategy,
         "strategy_segment": record.strategy_segment,

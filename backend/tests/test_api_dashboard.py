@@ -25,7 +25,15 @@ def _client_with_db():
     return TestClient(app), TestingSessionLocal
 
 
-def _recommendation(ticker, score, status="active_watch"):
+def _recommendation(ticker, score, status="active_watch", with_research_evidence=True):
+    research_tags = ["segment_edge_candidate", "market_context_edge_candidate"] if with_research_evidence else []
+    research_evidence = {
+        "market_context_segment": "gap_and_go|earnings_beat|supportive",
+        "recommended_threshold": 60,
+        "trade_count": 38,
+        "win_rate": 0.45,
+        "expectancy_r": 0.12,
+    } if with_research_evidence else {}
     return {
         "ticker": ticker,
         "timeframe": "day_trade",
@@ -35,14 +43,8 @@ def _recommendation(ticker, score, status="active_watch"):
         "confidence": "high",
         "strategy": "gap_and_go",
         "strategy_segment": "gap_and_go|earnings_beat",
-        "research_tags": ["segment_edge_candidate", "market_context_edge_candidate"],
-        "research_evidence": {
-            "market_context_segment": "gap_and_go|earnings_beat|supportive",
-            "recommended_threshold": 60,
-            "trade_count": 38,
-            "win_rate": 0.45,
-            "expectancy_r": 0.12,
-        },
+        "research_tags": research_tags,
+        "research_evidence": research_evidence,
         "entry_trigger": "breakout",
         "entry_zone": [10.0, 10.2],
         "stop_loss": 9.5,
@@ -77,4 +79,22 @@ def test_dashboard_ranked_recommendations_returns_actionable_sorted_opportunitie
     assert payload["items"][0]["research_tags"] == ["segment_edge_candidate", "market_context_edge_candidate"]
     assert payload["items"][0]["research_evidence"]["market_context_segment"] == "gap_and_go|earnings_beat|supportive"
     assert payload["items"][0]["catalyst_type"] == "earnings_beat"
+    app.dependency_overrides.clear()
+
+
+def test_dashboard_ranking_uses_small_context_evidence_boost():
+    client, SessionLocal = _client_with_db()
+    db = SessionLocal()
+    repo = RecommendationRepository(db)
+    repo.save_recommendation(_recommendation("RAW_SCORE_ONLY", 90, with_research_evidence=False))
+    repo.save_recommendation(_recommendation("EVIDENCE", 88, with_research_evidence=True))
+    db.close()
+
+    response = client.get("/api/dashboard/ranked-recommendations")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [item["ticker"] for item in payload["items"]] == ["EVIDENCE", "RAW_SCORE_ONLY"]
+    assert payload["items"][0]["rank_score"] == 93
+    assert payload["items"][1]["rank_score"] == 90
     app.dependency_overrides.clear()
