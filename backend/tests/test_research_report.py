@@ -83,6 +83,95 @@ def test_batch_research_report_surfaces_segment_threshold_recommendations_even_w
     ]
 
 
+def test_batch_research_report_recommends_strategy_catalyst_market_context_segments():
+    items = [
+        {
+            "recommendation": {
+                "status": "active_watch",
+                "setup_score": 72,
+                "strategy": "vwap_hold_reclaim",
+                "inputs": {
+                    "catalyst": {"catalyst_type": "contract_win"},
+                    "market_context": {"risk_context": "supportive"},
+                },
+            },
+            "outcome": {"status": "closed", "realized_r": 1.5, "target_hit": True},
+        },
+        {
+            "recommendation": {
+                "status": "active_watch",
+                "setup_score": 76,
+                "strategy": "vwap_hold_reclaim",
+                "inputs": {
+                    "catalyst": {"catalyst_type": "contract_win"},
+                    "market_context": {"risk_context": "supportive"},
+                },
+            },
+            "outcome": {"status": "closed", "realized_r": 1.5, "target_hit": True},
+        },
+        {
+            "recommendation": {
+                "status": "active_watch",
+                "setup_score": 82,
+                "strategy": "vwap_hold_reclaim",
+                "inputs": {
+                    "catalyst": {"catalyst_type": "contract_win"},
+                    "market_context": {"risk_context": "supportive"},
+                },
+            },
+            "outcome": {"status": "closed", "realized_r": -1.0, "stop_hit": True},
+        },
+        {
+            "recommendation": {
+                "status": "active_watch",
+                "setup_score": 72,
+                "strategy": "vwap_hold_reclaim",
+                "inputs": {
+                    "catalyst": {"catalyst_type": "contract_win"},
+                    "market_context": {"risk_context": "risk_off"},
+                },
+            },
+            "outcome": {"status": "closed", "realized_r": -1.0, "stop_hit": True},
+        },
+        {
+            "recommendation": {
+                "status": "active_watch",
+                "setup_score": 76,
+                "strategy": "vwap_hold_reclaim",
+                "inputs": {
+                    "catalyst": {"catalyst_type": "contract_win"},
+                    "market_context": {"risk_context": "risk_off"},
+                },
+            },
+            "outcome": {"status": "closed", "realized_r": -1.0, "stop_hit": True},
+        },
+    ]
+    batch = {
+        "tickers_total": 1,
+        "tickers_completed": 1,
+        "tickers_failed": 0,
+        "evaluated_bars_total": 5,
+        "results": {"AAPL": {**_result("AAPL", closed_total=5, expectancy_r=0.1, win_rate=0.4), "items": items}},
+        "errors": {},
+        "aggregate_threshold_sweep": {"best_threshold": None, "min_trades": 2},
+    }
+
+    report = build_batch_research_report(batch)
+
+    assert report["market_context_segment_recommendations"] == [
+        {
+            "segment": "vwap_hold_reclaim|contract_win|supportive",
+            "strategy": "vwap_hold_reclaim",
+            "catalyst_type": "contract_win",
+            "market_context": "supportive",
+            "recommended_threshold": 70,
+            "trade_count": 3,
+            "expectancy_r": 0.67,
+            "win_rate": 0.67,
+        }
+    ]
+
+
 def test_batch_research_report_ranks_strategy_catalyst_segments():
     batch = {
         "tickers_total": 2,

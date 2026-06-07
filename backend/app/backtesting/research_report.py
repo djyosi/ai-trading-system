@@ -1,3 +1,6 @@
+from app.backtesting.threshold_sweep import sweep_score_thresholds
+
+
 def build_batch_research_report(batch_result, top_n=5):
     warnings = []
     coverage = {
@@ -29,6 +32,11 @@ def build_batch_research_report(batch_result, top_n=5):
 
     top_segments = _top_segments(batch_result.get("aggregate_threshold_tuning_by_segment") or {}, top_n)
     segment_threshold_recommendations = top_segments
+    market_context_segment_recommendations = _market_context_segment_recommendations(
+        batch_result.get("results") or {},
+        min_trades=threshold_sweep.get("min_trades", 1),
+        top_n=top_n,
+    )
     recommendation_diagnostics = _recommendation_diagnostics(batch_result.get("results") or {})
     ticker_diagnostics = _ticker_diagnostics(batch_result.get("results") or {}, top_n)
     edge_diagnostics = _edge_diagnostics(batch_result.get("results") or {}, top_n)
@@ -44,6 +52,7 @@ def build_batch_research_report(batch_result, top_n=5):
         "weak_symbols": weak_symbols,
         "top_segments": top_segments,
         "segment_threshold_recommendations": segment_threshold_recommendations,
+        "market_context_segment_recommendations": market_context_segment_recommendations,
         "recommendation_diagnostics": recommendation_diagnostics,
         "ticker_diagnostics": ticker_diagnostics,
         "edge_diagnostics": edge_diagnostics,
@@ -227,6 +236,55 @@ def _items_diagnostics(items, include_reasons=False, include_rates=False):
     if include_reasons:
         diagnostics["no_trade_reasons"] = reason_rows
     return diagnostics
+
+
+def _market_context_segment_recommendations(results, min_trades, top_n):
+    groups = {}
+    for result in results.values():
+        for item in result.get("items", []):
+            recommendation = item.get("recommendation") or {}
+            inputs = recommendation.get("inputs") or {}
+            strategy = recommendation.get("strategy") or "unknown"
+            catalyst = ((inputs.get("catalyst") or {}).get("catalyst_type")) or "unknown"
+            market_context = ((inputs.get("market_context") or {}).get("risk_context")) or "unknown"
+            groups.setdefault(f"{strategy}|{catalyst}|{market_context}", []).append(item)
+
+    rows = []
+    for segment, items in sorted(groups.items()):
+        best_threshold = sweep_score_thresholds(items, min_trades=min_trades).get("best_threshold")
+        if not best_threshold:
+            continue
+        strategy, catalyst_type, market_context = _split_market_context_segment(segment)
+        rows.append(
+            {
+                "segment": segment,
+                "strategy": strategy,
+                "catalyst_type": catalyst_type,
+                "market_context": market_context,
+                "recommended_threshold": best_threshold.get("threshold"),
+                "trade_count": best_threshold.get("trade_count", 0),
+                "expectancy_r": best_threshold.get("expectancy_r"),
+                "win_rate": best_threshold.get("win_rate"),
+            }
+        )
+    return sorted(
+        rows,
+        key=lambda row: (
+            row["expectancy_r"] if row["expectancy_r"] is not None else float("-inf"),
+            row["trade_count"],
+            row["segment"],
+        ),
+        reverse=True,
+    )[:top_n]
+
+
+def _split_market_context_segment(segment):
+    parts = segment.split("|", 2)
+    if len(parts) == 1:
+        return parts[0], "unknown", "unknown"
+    if len(parts) == 2:
+        return parts[0], parts[1], "unknown"
+    return parts[0], parts[1], parts[2]
 
 
 def _top_segments(segment_tuning, top_n):
