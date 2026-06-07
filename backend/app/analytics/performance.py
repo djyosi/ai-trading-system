@@ -30,6 +30,13 @@ def summarize_performance(db):
             lambda recommendation: (recommendation.input_snapshot.get("catalyst") or {}).get("catalyst_type", "unknown"),
         ),
         "by_score_band": _group_metrics(closed, lambda recommendation: _score_band(recommendation.setup_score)),
+        "by_research_tag": _group_metrics_multi(closed, _research_tag_keys),
+        "by_market_context_segment": _group_metrics(
+            closed,
+            lambda recommendation: (recommendation.research_evidence or {}).get(
+                "market_context_segment", "no_market_context_segment"
+            ),
+        ),
     }
 
 
@@ -40,6 +47,20 @@ def _group_metrics(closed, key_fn):
         grouped.setdefault(key, []).append(outcome)
 
     return {key: _metrics_for_outcomes(outcomes) for key, outcomes in sorted(grouped.items())}
+
+
+def _group_metrics_multi(closed, key_fn):
+    grouped = {}
+    for recommendation, outcome in closed:
+        for key in key_fn(recommendation):
+            grouped.setdefault(key, []).append(outcome)
+
+    return {key: _metrics_for_outcomes(outcomes) for key, outcomes in sorted(grouped.items())}
+
+
+def _research_tag_keys(recommendation):
+    tags = recommendation.research_tags or []
+    return tags or ["no_research_tag"]
 
 
 def _metrics_for_outcomes(outcomes):

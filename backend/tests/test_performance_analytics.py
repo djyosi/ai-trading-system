@@ -12,7 +12,15 @@ def _repo():
     return RecommendationRepository(sessionmaker(bind=engine)())
 
 
-def _recommendation(ticker, strategy, catalyst_type, status="active_watch", setup_score=80):
+def _recommendation(
+    ticker,
+    strategy,
+    catalyst_type,
+    status="active_watch",
+    setup_score=80,
+    research_tags=None,
+    research_evidence=None,
+):
     return {
         "ticker": ticker,
         "timeframe": "day_trade",
@@ -21,6 +29,9 @@ def _recommendation(ticker, strategy, catalyst_type, status="active_watch", setu
         "setup_score": setup_score,
         "confidence": "medium_high",
         "strategy": strategy,
+        "strategy_segment": f"{strategy}|{catalyst_type}",
+        "research_tags": research_tags or [],
+        "research_evidence": research_evidence or {},
         "entry_trigger": "breakout",
         "entry_zone": [10.0, 10.2],
         "stop_loss": 9.7,
@@ -110,6 +121,42 @@ def test_summarize_performance_groups_by_score_band_for_threshold_tuning():
         "70-84": {"closed_total": 1, "wins": 0, "win_rate": 0.0, "average_realized_r": -1.0, "expectancy_r": -1.0},
         "85-100": {"closed_total": 1, "wins": 1, "win_rate": 1.0, "average_realized_r": 2.0, "expectancy_r": 2.0},
     }
+
+
+def test_summarize_performance_groups_by_research_evidence_for_learning():
+    repo = _repo()
+    evidence = {
+        "market_context_segment": "vwap_hold_reclaim|contract_win|supportive",
+        "recommended_threshold": 60,
+        "trade_count": 74,
+        "win_rate": 0.45,
+        "expectancy_r": 0.11,
+    }
+    supported_winner = repo.save_recommendation(
+        _recommendation(
+            "AAA",
+            "vwap_hold_reclaim",
+            "contract_win",
+            research_tags=["segment_edge_candidate", "market_context_edge_candidate"],
+            research_evidence=evidence,
+        )
+    )
+    unsupported_loser = repo.save_recommendation(_recommendation("BBB", "gap_and_go", "unknown"))
+    repo.save_outcome(supported_winner.id, {"status": "closed", "realized_r": 1.5, "target_hit": True, "stop_hit": False})
+    repo.save_outcome(unsupported_loser.id, {"status": "closed", "realized_r": -1.0, "target_hit": False, "stop_hit": True})
+
+    summary = summarize_performance(repo.db)
+
+    assert summary["by_research_tag"]["market_context_edge_candidate"] == {
+        "closed_total": 1,
+        "wins": 1,
+        "win_rate": 1.0,
+        "average_realized_r": 1.5,
+        "expectancy_r": 1.5,
+    }
+    assert summary["by_research_tag"]["no_research_tag"]["average_realized_r"] == -1.0
+    assert summary["by_market_context_segment"]["vwap_hold_reclaim|contract_win|supportive"]["expectancy_r"] == 1.5
+    assert summary["by_market_context_segment"]["no_market_context_segment"]["expectancy_r"] == -1.0
 
 
 def test_summarize_performance_handles_empty_history():
