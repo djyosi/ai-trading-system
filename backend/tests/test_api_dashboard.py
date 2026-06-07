@@ -34,6 +34,15 @@ def _recommendation(ticker, score, status="active_watch"):
         "setup_score": score,
         "confidence": "high",
         "strategy": "gap_and_go",
+        "strategy_segment": "gap_and_go|earnings_beat",
+        "research_tags": ["segment_edge_candidate", "market_context_edge_candidate"],
+        "research_evidence": {
+            "market_context_segment": "gap_and_go|earnings_beat|supportive",
+            "recommended_threshold": 60,
+            "trade_count": 38,
+            "win_rate": 0.45,
+            "expectancy_r": 0.12,
+        },
         "entry_trigger": "breakout",
         "entry_zone": [10.0, 10.2],
         "stop_loss": 9.5,
@@ -64,5 +73,8 @@ def test_dashboard_ranked_recommendations_returns_actionable_sorted_opportunitie
     assert [item["ticker"] for item in payload["items"]] == ["HIGH", "LOW"]
     assert payload["items"][0]["rank"] == 1
     assert payload["items"][0]["setup_score"] == 91
+    assert payload["items"][0]["strategy_segment"] == "gap_and_go|earnings_beat"
+    assert payload["items"][0]["research_tags"] == ["segment_edge_candidate", "market_context_edge_candidate"]
+    assert payload["items"][0]["research_evidence"]["market_context_segment"] == "gap_and_go|earnings_beat|supportive"
     assert payload["items"][0]["catalyst_type"] == "earnings_beat"
     app.dependency_overrides.clear()

@@ -18,6 +18,15 @@ def _recommendation_payload(ticker="PAX", status="active_watch"):
         "setup_score": 93,
         "confidence": "high",
         "strategy": "catalyst_momentum_gap_and_go",
+        "strategy_segment": "catalyst_momentum_gap_and_go|analyst_upgrade",
+        "research_tags": ["segment_edge_candidate", "market_context_edge_candidate"],
+        "research_evidence": {
+            "market_context_segment": "catalyst_momentum_gap_and_go|analyst_upgrade|supportive",
+            "recommended_threshold": 60,
+            "trade_count": 38,
+            "win_rate": 0.45,
+            "expectancy_r": 0.12,
+        },
         "entry_trigger": "break_above_intraday_high_or_clean_vwap_hold",
         "entry_zone": [11.43, 11.67],
         "stop_loss": 11.09,
@@ -65,6 +74,9 @@ def test_list_recommendations_endpoint_returns_latest_recommendations():
     payload = response.json()
     assert len(payload["items"]) == 2
     assert payload["items"][0]["ticker"] == "PAX"
+    assert payload["items"][0]["strategy_segment"] == "catalyst_momentum_gap_and_go|analyst_upgrade"
+    assert payload["items"][0]["research_tags"] == ["segment_edge_candidate", "market_context_edge_candidate"]
+    assert payload["items"][0]["research_evidence"]["market_context_segment"] == "catalyst_momentum_gap_and_go|analyst_upgrade|supportive"
     assert payload["items"][0]["input_snapshot"] == {"features": {}, "catalyst": {}, "market_context": {}}
     app.dependency_overrides.clear()
 
@@ -81,6 +93,8 @@ def test_get_recommendation_endpoint_returns_single_record():
     assert response.status_code == 200
     assert response.json()["ticker"] == "PAX"
     assert response.json()["strategy"] == "catalyst_momentum_gap_and_go"
+    assert response.json()["strategy_segment"] == "catalyst_momentum_gap_and_go|analyst_upgrade"
+    assert response.json()["research_evidence"]["expectancy_r"] == 0.12
     app.dependency_overrides.clear()
 
 

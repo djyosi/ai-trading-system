@@ -24,6 +24,15 @@ def _recommendation_payload():
         "setup_score": 93,
         "confidence": "high",
         "strategy": "catalyst_momentum_gap_and_go",
+        "strategy_segment": "catalyst_momentum_gap_and_go|analyst_upgrade",
+        "research_tags": ["segment_edge_candidate", "market_context_edge_candidate"],
+        "research_evidence": {
+            "market_context_segment": "catalyst_momentum_gap_and_go|analyst_upgrade|supportive",
+            "recommended_threshold": 60,
+            "trade_count": 38,
+            "win_rate": 0.45,
+            "expectancy_r": 0.12,
+        },
         "entry_trigger": "break_above_intraday_high_or_clean_vwap_hold",
         "entry_zone": [11.43, 11.67],
         "stop_loss": 11.09,
@@ -53,6 +62,10 @@ def test_recommendation_record_preserves_strategy_risk_and_input_snapshots():
     assert record.status == "active_watch"
     assert record.setup_score == 93
     assert record.entry_zone == [11.43, 11.67]
+    assert record.strategy_segment == "catalyst_momentum_gap_and_go|analyst_upgrade"
+    assert record.research_tags == ["segment_edge_candidate", "market_context_edge_candidate"]
+    assert record.research_evidence["market_context_segment"] == "catalyst_momentum_gap_and_go|analyst_upgrade|supportive"
+    assert record.research_evidence["expectancy_r"] == 0.12
     assert record.targets == [12.24, 12.75]
     assert record.input_snapshot["features"]["relative_volume"] == 3.2
     assert record.created_at.replace(tzinfo=timezone.utc) == created_at
