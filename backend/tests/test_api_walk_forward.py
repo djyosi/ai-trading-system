@@ -248,6 +248,36 @@ def test_batch_backtest_api_can_return_aggregate_threshold_tuning():
     app.dependency_overrides.clear()
 
 
+def test_batch_backtest_api_can_return_research_report():
+    class FakeProvider:
+        async def get_daily_candles(self, ticker, start, end):
+            return [_candle(i, 10 + i, 9 + i, 9.5 + i) for i in range(1, 8)]
+
+    app.dependency_overrides[get_backtest_market_data_provider] = lambda: FakeProvider()
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/backtests/batch",
+        json={
+            "tickers": ["AAPL", "MSFT"],
+            "start": "2025-01-01",
+            "end": "2025-02-01",
+            "lookback_bars": 3,
+            "horizon_bars": 1,
+            "include_threshold_sweep": True,
+            "include_research_report": True,
+            "thresholds": [60, 80],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["research_report"]["coverage"]["tickers_completed"] == 2
+    assert payload["research_report"]["status"] in {"research_ready", "needs_more_data"}
+    assert "warnings" in payload["research_report"]
+    app.dependency_overrides.clear()
+
+
 def test_walk_forward_api_rejects_too_few_candles_for_lookback():
     client = TestClient(app)
 

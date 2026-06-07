@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.backtesting.batch import run_historical_batch
+from app.backtesting.research_report import build_batch_research_report
 from app.backtesting.threshold_sweep import sweep_score_thresholds, tune_thresholds_by_segment
 from app.backtesting.walk_forward import run_walk_forward_replay
 from app.db.session import get_db
@@ -38,6 +39,7 @@ class BatchBacktestRequest(BaseModel):
     lookback_bars: int = Field(default=20, ge=1)
     horizon_bars: int = Field(default=5, ge=1)
     include_threshold_sweep: bool = False
+    include_research_report: bool = False
     thresholds: list[int] = Field(default_factory=lambda: [50, 60, 70, 80, 85, 90])
     min_trades: int = Field(default=1, ge=1)
 
@@ -89,7 +91,7 @@ async def run_batch_backtest(request: BatchBacktestRequest, market_data_provider
         lookback_bars=request.lookback_bars,
         horizon_bars=request.horizon_bars,
     )
-    if request.include_threshold_sweep:
+    if request.include_threshold_sweep or request.include_research_report:
         items = [item for ticker_result in result["results"].values() for item in ticker_result["items"]]
         result["aggregate_threshold_sweep"] = sweep_score_thresholds(
             items, thresholds=request.thresholds, min_trades=request.min_trades
@@ -97,6 +99,8 @@ async def run_batch_backtest(request: BatchBacktestRequest, market_data_provider
         result["aggregate_threshold_tuning_by_segment"] = tune_thresholds_by_segment(
             items, thresholds=request.thresholds, min_trades=request.min_trades
         )
+    if request.include_research_report:
+        result["research_report"] = build_batch_research_report(result)
     return result
 
 
