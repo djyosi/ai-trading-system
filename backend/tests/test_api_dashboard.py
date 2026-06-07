@@ -96,5 +96,17 @@ def test_dashboard_ranking_uses_small_context_evidence_boost():
     payload = response.json()
     assert [item["ticker"] for item in payload["items"]] == ["EVIDENCE", "RAW_SCORE_ONLY"]
     assert payload["items"][0]["rank_score"] == 93
+    assert payload["items"][0]["rank_components"] == {
+        "base_setup_score": 88,
+        "market_context_evidence_boost": 5,
+    }
+    assert payload["items"][0]["rank_reasons"] == [
+        "market_context_edge_candidate: gap_and_go|earnings_beat|supportive"
+    ]
     assert payload["items"][1]["rank_score"] == 90
+    assert payload["items"][1]["rank_components"] == {
+        "base_setup_score": 90,
+        "market_context_evidence_boost": 0,
+    }
+    assert payload["items"][1]["rank_reasons"] == []
     app.dependency_overrides.clear()

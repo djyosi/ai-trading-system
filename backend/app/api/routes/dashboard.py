@@ -19,9 +19,27 @@ def ranked_recommendations(limit: int = 25, db: Session = Depends(get_db)):
     return {"items_total": len(items), "items": items}
 
 
+def _rank_components(record):
+    return {
+        "base_setup_score": record.setup_score,
+        "market_context_evidence_boost": _market_context_evidence_boost(record),
+    }
+
+
+def _rank_reasons(record):
+    if _market_context_evidence_boost(record) == 0:
+        return []
+    segment = (record.research_evidence or {}).get("market_context_segment", "unknown_segment")
+    return [f"market_context_edge_candidate: {segment}"]
+
+
 def _rank_score(record):
-    boost = 5 if "market_context_edge_candidate" in (record.research_tags or []) else 0
-    return record.setup_score + boost
+    components = _rank_components(record)
+    return components["base_setup_score"] + components["market_context_evidence_boost"]
+
+
+def _market_context_evidence_boost(record):
+    return 5 if "market_context_edge_candidate" in (record.research_tags or []) else 0
 
 
 def _ranked_item(rank, record):
@@ -34,6 +52,8 @@ def _ranked_item(rank, record):
         "status": record.status,
         "setup_score": record.setup_score,
         "rank_score": _rank_score(record),
+        "rank_components": _rank_components(record),
+        "rank_reasons": _rank_reasons(record),
         "confidence": record.confidence,
         "strategy": record.strategy,
         "strategy_segment": record.strategy_segment,
