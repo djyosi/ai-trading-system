@@ -32,6 +32,7 @@ def build_batch_research_report(batch_result, top_n=5):
     recommendation_diagnostics = _recommendation_diagnostics(batch_result.get("results") or {})
     ticker_diagnostics = _ticker_diagnostics(batch_result.get("results") or {}, top_n)
     edge_diagnostics = _edge_diagnostics(batch_result.get("results") or {}, top_n)
+    next_research_actions = _next_research_actions(threshold_sweep, edge_diagnostics)
     _append_actionability_warnings(warnings, recommendation_diagnostics)
 
     return {
@@ -46,6 +47,7 @@ def build_batch_research_report(batch_result, top_n=5):
         "recommendation_diagnostics": recommendation_diagnostics,
         "ticker_diagnostics": ticker_diagnostics,
         "edge_diagnostics": edge_diagnostics,
+        "next_research_actions": next_research_actions,
         "warnings": warnings,
     }
 
@@ -106,6 +108,64 @@ def _catalyst_type(item):
 def _risk_context(item):
     recommendation = item.get("recommendation") or {}
     return (((recommendation.get("inputs") or {}).get("market_context") or {}).get("risk_context")) or "unknown"
+
+
+def _next_research_actions(threshold_sweep, edge_diagnostics):
+    actions = []
+    if threshold_sweep.get("best_threshold") is None and threshold_sweep.get("min_trades") is not None:
+        actions.append(
+            {
+                "action": "increase_sample_size",
+                "reason": "No global threshold met minimum trades and positive expectancy",
+                "min_trades": threshold_sweep.get("min_trades"),
+            }
+        )
+    actions.extend(_promising_sparse_segment_actions(edge_diagnostics))
+    actions.extend(_weak_segment_actions(edge_diagnostics))
+    return actions
+
+
+def _promising_sparse_segment_actions(edge_diagnostics, max_trade_count=3):
+    actions = []
+    for dimension, rows in edge_diagnostics.items():
+        for row in rows:
+            expectancy = row.get("expectancy_r")
+            trade_count = row.get("trade_count", 0)
+            if expectancy is None or expectancy <= 0 or trade_count > max_trade_count:
+                continue
+            actions.append(
+                {
+                    "action": "investigate_promising_segment",
+                    "dimension": dimension,
+                    "segment": row.get("segment"),
+                    "reason": f"Positive expectancy but only {trade_count} closed trade(s)",
+                    "trade_count": trade_count,
+                    "expectancy_r": expectancy,
+                }
+            )
+    return actions[:1]
+
+
+def _weak_segment_actions(edge_diagnostics, min_trade_count=2):
+    actions = []
+    dimension_priority = {"catalyst_types": 0, "score_bands": 1, "market_contexts": 2}
+    for dimension, rows in edge_diagnostics.items():
+        for row in rows:
+            expectancy = row.get("expectancy_r")
+            trade_count = row.get("trade_count", 0)
+            if expectancy is None or expectancy >= 0 or trade_count < min_trade_count:
+                continue
+            actions.append(
+                {
+                    "action": "deprioritize_segment",
+                    "dimension": dimension,
+                    "segment": row.get("segment"),
+                    "reason": "Negative expectancy segment",
+                    "trade_count": trade_count,
+                    "expectancy_r": expectancy,
+                }
+            )
+    return sorted(actions, key=lambda action: dimension_priority.get(action["dimension"], 99))[:1]
 
 
 def _append_actionability_warnings(warnings, diagnostics, min_actionable_rate=0.5):

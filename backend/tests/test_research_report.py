@@ -279,6 +279,71 @@ def test_batch_research_report_summarizes_edge_diagnostics_by_score_catalyst_and
     ]
 
 
+def test_batch_research_report_recommends_next_actions_from_threshold_and_edge_diagnostics():
+    items = [
+        {
+            "recommendation": {
+                "status": "active_watch",
+                "setup_score": 65,
+                "inputs": {"catalyst": {"catalyst_type": "contract_win"}, "market_context": {"risk_context": "mixed"}},
+            },
+            "outcome": {"status": "closed", "realized_r": 1.5, "target_hit": True},
+        },
+        {
+            "recommendation": {
+                "status": "active_watch",
+                "setup_score": 35,
+                "inputs": {"catalyst": {"catalyst_type": "unknown"}, "market_context": {"risk_context": "mixed"}},
+            },
+            "outcome": {"status": "closed", "realized_r": -1.0, "stop_hit": True},
+        },
+        {
+            "recommendation": {
+                "status": "active_watch",
+                "setup_score": 38,
+                "inputs": {"catalyst": {"catalyst_type": "unknown"}, "market_context": {"risk_context": "mixed"}},
+            },
+            "outcome": {"status": "closed", "realized_r": -1.0, "stop_hit": True},
+        },
+        {"recommendation": {"status": "no_trade", "reject_reasons": ["score_below_actionable_threshold"]}},
+    ]
+    batch = {
+        "tickers_total": 1,
+        "tickers_completed": 1,
+        "tickers_failed": 0,
+        "evaluated_bars_total": 4,
+        "results": {"AAPL": {**_result("AAPL", closed_total=3, expectancy_r=-0.17, win_rate=0.33), "items": items}},
+        "errors": {},
+        "aggregate_threshold_sweep": {"best_threshold": None, "min_trades": 5},
+    }
+
+    report = build_batch_research_report(batch)
+
+    assert report["next_research_actions"] == [
+        {
+            "action": "increase_sample_size",
+            "reason": "No global threshold met minimum trades and positive expectancy",
+            "min_trades": 5,
+        },
+        {
+            "action": "investigate_promising_segment",
+            "dimension": "score_bands",
+            "segment": "60-69",
+            "reason": "Positive expectancy but only 1 closed trade(s)",
+            "trade_count": 1,
+            "expectancy_r": 1.5,
+        },
+        {
+            "action": "deprioritize_segment",
+            "dimension": "catalyst_types",
+            "segment": "unknown",
+            "reason": "Negative expectancy segment",
+            "trade_count": 2,
+            "expectancy_r": -1.0,
+        },
+    ]
+
+
 def test_batch_research_report_warns_when_actionability_is_low():
     items = [
         {"recommendation": {"status": "no_trade", "reject_reasons": ["liquidity_score_below_min"]}},
