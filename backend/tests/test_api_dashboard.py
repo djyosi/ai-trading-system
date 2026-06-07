@@ -118,6 +118,37 @@ def test_dashboard_ranking_uses_small_context_evidence_boost():
     app.dependency_overrides.clear()
 
 
+def test_dashboard_does_not_boost_tiny_sample_research_evidence():
+    client, SessionLocal = _client_with_db()
+    db = SessionLocal()
+    repo = RecommendationRepository(db)
+    repo.save_recommendation(_recommendation("RAW_SCORE_ONLY", 90, with_research_evidence=False))
+    repo.save_recommendation(
+        _recommendation(
+            "TAGGED_BUT_TINY_SAMPLE",
+            88,
+            research_evidence_override={
+                "market_context_segment": "gap_and_go|earnings_beat|supportive",
+                "recommended_threshold": 60,
+                "trade_count": 4,
+                "win_rate": 0.75,
+                "expectancy_r": 1.2,
+            },
+        )
+    )
+    db.close()
+
+    response = client.get("/api/dashboard/ranked-recommendations")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [item["ticker"] for item in payload["items"]] == ["RAW_SCORE_ONLY", "TAGGED_BUT_TINY_SAMPLE"]
+    assert payload["items"][1]["rank_score"] == 88
+    assert payload["items"][1]["rank_components"]["market_context_evidence_boost"] == 0
+    assert payload["items"][1]["rank_reasons"] == []
+    app.dependency_overrides.clear()
+
+
 def test_dashboard_does_not_boost_non_positive_research_evidence():
     client, SessionLocal = _client_with_db()
     db = SessionLocal()

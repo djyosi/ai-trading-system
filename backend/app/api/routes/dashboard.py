@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.recommendation import RecommendationRecord
 
+MIN_EVIDENCE_TRADES_FOR_RANK_BOOST = 10
+
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
@@ -43,6 +45,8 @@ def _market_context_evidence_boost(record):
         return 0
     evidence = record.research_evidence or {}
     if (evidence.get("expectancy_r") or 0) <= 0:
+        return 0
+    if (evidence.get("trade_count") or 0) < MIN_EVIDENCE_TRADES_FOR_RANK_BOOST:
         return 0
     return 5
 
