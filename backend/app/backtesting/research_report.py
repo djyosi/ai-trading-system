@@ -27,6 +27,8 @@ def build_batch_research_report(batch_result, top_n=5):
         key=lambda row: (row["expectancy_r"], row["ticker"]),
     )[:top_n]
 
+    top_segments = _top_segments(batch_result.get("aggregate_threshold_tuning_by_segment") or {}, top_n)
+
     return {
         "status": "research_ready" if best_threshold is not None else "needs_more_data",
         "coverage": coverage,
@@ -34,8 +36,45 @@ def build_batch_research_report(batch_result, top_n=5):
         "best_threshold": best_threshold,
         "top_symbols": top_symbols,
         "weak_symbols": weak_symbols,
+        "top_segments": top_segments,
         "warnings": warnings,
     }
+
+
+def _top_segments(segment_tuning, top_n):
+    rows = []
+    for segment, data in sorted(segment_tuning.items()):
+        best_threshold = (data or {}).get("best_threshold")
+        if not best_threshold:
+            continue
+        strategy, catalyst_type = _split_segment(segment)
+        rows.append(
+            {
+                "segment": segment,
+                "strategy": strategy,
+                "catalyst_type": catalyst_type,
+                "recommended_threshold": best_threshold.get("threshold"),
+                "trade_count": best_threshold.get("trade_count", 0),
+                "expectancy_r": best_threshold.get("expectancy_r"),
+                "win_rate": best_threshold.get("win_rate"),
+            }
+        )
+    return sorted(
+        rows,
+        key=lambda row: (
+            row["expectancy_r"] if row["expectancy_r"] is not None else float("-inf"),
+            row["trade_count"],
+            row["segment"],
+        ),
+        reverse=True,
+    )[:top_n]
+
+
+def _split_segment(segment):
+    if "|" not in segment:
+        return segment, "unknown"
+    strategy, catalyst_type = segment.split("|", 1)
+    return strategy, catalyst_type
 
 
 def _symbol_row(ticker, result):

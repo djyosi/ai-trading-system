@@ -46,6 +46,56 @@ def test_batch_research_report_ranks_symbols_and_carries_best_threshold():
     assert "1 ticker(s) failed" in report["warnings"]
 
 
+def test_batch_research_report_ranks_strategy_catalyst_segments():
+    batch = {
+        "tickers_total": 2,
+        "tickers_completed": 2,
+        "tickers_failed": 0,
+        "evaluated_bars_total": 20,
+        "results": {
+            "AAPL": _result("AAPL", closed_total=8, expectancy_r=0.45, win_rate=0.62),
+            "MSFT": _result("MSFT", closed_total=6, expectancy_r=0.2, win_rate=0.5),
+        },
+        "errors": {},
+        "aggregate_threshold_sweep": {
+            "best_threshold": {"threshold": 80, "trade_count": 9, "expectancy_r": 0.38, "win_rate": 0.67},
+            "min_trades": 5,
+        },
+        "aggregate_threshold_tuning_by_segment": {
+            "gap_and_go|earnings_beat": {
+                "best_threshold": {"threshold": 80, "trade_count": 7, "expectancy_r": 0.55, "win_rate": 0.71}
+            },
+            "vwap_hold|analyst_upgrade": {
+                "best_threshold": {"threshold": 70, "trade_count": 5, "expectancy_r": 0.25, "win_rate": 0.6}
+            },
+            "gap_and_go|unknown": {"best_threshold": None},
+        },
+    }
+
+    report = build_batch_research_report(batch)
+
+    assert report["top_segments"] == [
+        {
+            "segment": "gap_and_go|earnings_beat",
+            "strategy": "gap_and_go",
+            "catalyst_type": "earnings_beat",
+            "recommended_threshold": 80,
+            "trade_count": 7,
+            "expectancy_r": 0.55,
+            "win_rate": 0.71,
+        },
+        {
+            "segment": "vwap_hold|analyst_upgrade",
+            "strategy": "vwap_hold",
+            "catalyst_type": "analyst_upgrade",
+            "recommended_threshold": 70,
+            "trade_count": 5,
+            "expectancy_r": 0.25,
+            "win_rate": 0.6,
+        },
+    ]
+
+
 def test_batch_research_report_flags_insufficient_threshold_sample():
     batch = {
         "tickers_total": 1,
