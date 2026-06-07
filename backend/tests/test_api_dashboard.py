@@ -78,6 +78,11 @@ def test_dashboard_ranked_recommendations_returns_actionable_sorted_opportunitie
     assert response.status_code == 200
     payload = response.json()
     assert payload["items_total"] == 2
+    assert payload["rank_policy"] == {
+        "market_context_evidence_boost": 5,
+        "min_evidence_trades_for_rank_boost": 10,
+        "requires_positive_expectancy": True,
+    }
     assert [item["ticker"] for item in payload["items"]] == ["HIGH", "LOW"]
     assert payload["items"][0]["rank"] == 1
     assert payload["items"][0]["setup_score"] == 91

@@ -1,7 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.analytics.research_evidence import rank_evidence_status
+from app.analytics.research_evidence import (
+    MARKET_CONTEXT_EVIDENCE_RANK_BOOST,
+    rank_evidence_policy,
+    rank_evidence_status,
+)
 from app.db.session import get_db
 from app.models.recommendation import RecommendationRecord
 
@@ -17,7 +21,7 @@ def ranked_recommendations(limit: int = 25, db: Session = Depends(get_db)):
         reverse=True,
     )[:limit]
     items = [_ranked_item(rank, record) for rank, record in enumerate(records, start=1)]
-    return {"items_total": len(items), "items": items}
+    return {"items_total": len(items), "rank_policy": rank_evidence_policy(), "items": items}
 
 
 def _rank_evidence(record):
@@ -45,7 +49,7 @@ def _rank_score(record):
 
 
 def _market_context_evidence_boost(record):
-    return 5 if _rank_evidence(record)["market_context_boost_eligible"] else 0
+    return MARKET_CONTEXT_EVIDENCE_RANK_BOOST if _rank_evidence(record)["market_context_boost_eligible"] else 0
 
 
 def _ranked_item(rank, record):
