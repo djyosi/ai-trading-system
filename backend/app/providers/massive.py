@@ -138,6 +138,8 @@ class MassiveProvider(MarketDataProvider):
         text = f"{headline or ''} {description or ''}".lower()
         if "earnings beat" in text or "beats earnings" in text or "beats estimates" in text:
             return "earnings_beat"
+        if "earnings miss" in text or "misses earnings" in text or "misses estimates" in text or "missed expectations" in text:
+            return "earnings_miss"
         if "raises guidance" in text or "guidance raise" in text:
             return "guidance_raise"
         if "cuts guidance" in text or "guidance cut" in text:
@@ -146,10 +148,16 @@ class MassiveProvider(MarketDataProvider):
             return "analyst_upgrade"
         if "downgrade" in text:
             return "analyst_downgrade"
-        if "fda approval" in text or "approved by fda" in text:
+        if "fda approval" in text or "approved by fda" in text or "fda clearance" in text:
             return "fda_approval"
         if "contract" in text and ("win" in text or "award" in text):
             return "contract_win"
+        if "launch" in text or "unveils" in text or "introduces" in text:
+            return "product_launch"
+        if "acquire" in text or "acquisition" in text or "merger" in text or "buyout" in text:
+            return "m_and_a"
+        if "investigation" in text or "lawsuit" in text or "sues " in text or "sec probe" in text:
+            return "investigation"
         return classify_catalyst({})["catalyst_type"]
 
     def _parse_timeframe(self, timeframe):

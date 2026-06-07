@@ -109,6 +109,21 @@ async def test_get_snapshot_returns_normalized_snapshot():
     await provider.aclose()
 
 
+def test_massive_news_catalyst_type_inference_covers_common_research_catalysts():
+    provider = MassiveProvider(Settings(massive_api_key="test-key"))
+
+    cases = [
+        ("Apple unveils new AI product line", None, "product_launch"),
+        ("Amazon to acquire robotics startup", None, "m_and_a"),
+        ("Tesla misses earnings estimates", "Quarterly profit missed expectations", "earnings_miss"),
+        ("Justice Department opens investigation into Alphabet", None, "investigation"),
+        ("Pfizer wins FDA clearance for new treatment", None, "fda_approval"),
+    ]
+
+    for headline, description, expected in cases:
+        assert provider._infer_news_catalyst_type(headline, description) == expected
+
+
 @pytest.mark.asyncio
 async def test_get_news_normalizes_massive_news_response_as_catalysts():
     async def handler(request):
