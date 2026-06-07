@@ -1,5 +1,8 @@
+DEFAULT_SCORE_THRESHOLDS = [30, 40, 50, 60, 70, 80, 85, 90]
+
+
 def sweep_score_thresholds(items, thresholds=None, min_trades=1):
-    thresholds = thresholds or [50, 60, 70, 80, 85, 90]
+    thresholds = thresholds or DEFAULT_SCORE_THRESHOLDS
     rows = [_metrics_for_threshold(items, threshold) for threshold in thresholds]
     eligible = [row for row in rows if row["trade_count"] >= min_trades and row["expectancy_r"] is not None]
     best = max(eligible, key=lambda row: (row["expectancy_r"], row["win_rate"] or 0, row["threshold"]), default=None)

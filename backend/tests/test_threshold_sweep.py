@@ -18,6 +18,16 @@ def _item(score, realized_r, strategy="gap_and_go", catalyst_type="earnings_beat
     }
 
 
+def test_sweep_score_thresholds_default_thresholds_include_research_candidate_scores():
+    items = [_item(32, 1.0), _item(41, -1.0), _item(72, 2.0)]
+
+    result = sweep_score_thresholds(items)
+
+    assert [row["threshold"] for row in result["thresholds"]] == [30, 40, 50, 60, 70, 80, 85, 90]
+    assert result["thresholds"][0]["trade_count"] == 3
+    assert result["best_threshold"] is not None
+
+
 def test_sweep_score_thresholds_compares_trade_count_win_rate_and_expectancy():
     items = [_item(91, 2.0), _item(82, -1.0), _item(74, 0.5), _item(52, -1.0)]
 

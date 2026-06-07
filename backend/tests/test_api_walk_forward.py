@@ -377,6 +377,33 @@ def test_batch_backtest_api_applies_catalyst_freshness_window():
     app.dependency_overrides.clear()
 
 
+def test_walk_forward_api_threshold_sweep_defaults_include_research_thresholds():
+    client = TestClient(app)
+    candles = [
+        _candle(1, 209.0, 208.0, 210.0, volume=5_000_000),
+        _candle(2, 210.0, 209.0, 211.0, volume=5_000_000),
+        _candle(3, 211.0, 210.0, 212.0, volume=5_000_000),
+        _candle(4, 212.5, 211.5, 213.0, volume=5_000_000),
+        _candle(5, 216.5, 212.0, 216.0, volume=5_000_000),
+    ]
+
+    response = client.post(
+        "/api/backtests/walk-forward",
+        json={
+            "ticker": "AAPL",
+            "candles": candles,
+            "market_context": {"risk_context": "supportive"},
+            "lookback_bars": 3,
+            "horizon_bars": 1,
+            "actionable_score_threshold": 30,
+            "include_threshold_sweep": True,
+        },
+    )
+
+    assert response.status_code == 200
+    assert [row["threshold"] for row in response.json()["threshold_sweep"]["thresholds"]][:2] == [30, 40]
+
+
 def test_walk_forward_api_applies_actionable_score_threshold():
     client = TestClient(app)
     candles = [

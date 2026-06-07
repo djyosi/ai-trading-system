@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 from app.backtesting.batch import run_historical_batch
 from app.backtesting.research_report import build_batch_research_report
-from app.backtesting.threshold_sweep import sweep_score_thresholds, tune_thresholds_by_segment
+from app.backtesting.threshold_sweep import DEFAULT_SCORE_THRESHOLDS, sweep_score_thresholds, tune_thresholds_by_segment
 from app.backtesting.walk_forward import run_walk_forward_replay
 from app.db.session import get_db
 from app.providers.massive import MassiveProvider
@@ -26,7 +26,7 @@ class WalkForwardReplayRequest(BaseModel):
     end: Optional[str] = None
     persist_recommendations: bool = False
     include_threshold_sweep: bool = False
-    thresholds: list[int] = Field(default_factory=lambda: [50, 60, 70, 80, 85, 90])
+    thresholds: list[int] = Field(default_factory=lambda: list(DEFAULT_SCORE_THRESHOLDS))
     min_trades: int = Field(default=1, ge=1)
     catalyst_max_age_minutes: Optional[int] = Field(default=None, ge=0)
     actionable_score_threshold: int = Field(default=70, ge=0, le=100)
@@ -43,7 +43,7 @@ class BatchBacktestRequest(BaseModel):
     include_threshold_sweep: bool = False
     include_research_report: bool = False
     include_news_catalysts: bool = False
-    thresholds: list[int] = Field(default_factory=lambda: [50, 60, 70, 80, 85, 90])
+    thresholds: list[int] = Field(default_factory=lambda: list(DEFAULT_SCORE_THRESHOLDS))
     min_trades: int = Field(default=1, ge=1)
     catalyst_max_age_minutes: Optional[int] = Field(default=None, ge=0)
     actionable_score_threshold: int = Field(default=70, ge=0, le=100)
