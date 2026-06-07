@@ -1,8 +1,14 @@
 from app.strategies.day_trading import score_day_trade_setup
 
 
-def build_recommendation(ticker, features, catalyst, market_context):
-    strategy_result = score_day_trade_setup(ticker, features, catalyst, market_context)
+def build_recommendation(ticker, features, catalyst, market_context, actionable_score_threshold=70):
+    strategy_result = score_day_trade_setup(
+        ticker,
+        features,
+        catalyst,
+        market_context,
+        actionable_score_threshold=actionable_score_threshold,
+    )
     status = strategy_result["status"]
 
     trade_plan = _build_trade_plan(features, status)

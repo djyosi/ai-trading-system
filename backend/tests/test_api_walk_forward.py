@@ -377,6 +377,59 @@ def test_batch_backtest_api_applies_catalyst_freshness_window():
     app.dependency_overrides.clear()
 
 
+def test_walk_forward_api_applies_actionable_score_threshold():
+    client = TestClient(app)
+    candles = [
+        {"timestamp_ms": i * 86_400_000, "open": 210 + i, "high": 210.5 + i, "low": 209.5 + i, "close": 210 + i, "volume": 5_000_000}
+        for i in range(1, 6)
+    ]
+
+    response = client.post(
+        "/api/backtests/walk-forward",
+        json={
+            "ticker": "AAPL",
+            "candles": candles,
+            "market_context": {"risk_context": "mixed"},
+            "lookback_bars": 3,
+            "horizon_bars": 1,
+            "actionable_score_threshold": 20,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["items"][0]["recommendation"]["status"] == "active_watch"
+
+
+def test_batch_backtest_api_applies_actionable_score_threshold():
+    class FakeProvider:
+        async def get_daily_candles(self, ticker, start, end):
+            return [
+                {"timestamp_ms": i * 86_400_000, "open": 210 + i, "high": 210.5 + i, "low": 209.5 + i, "close": 210 + i, "volume": 5_000_000}
+                for i in range(1, 6)
+            ]
+
+    app.dependency_overrides[get_backtest_market_data_provider] = lambda: FakeProvider()
+    try:
+        client = TestClient(app)
+        response = client.post(
+            "/api/backtests/batch",
+            json={
+                "tickers": ["AAPL"],
+                "data_source": "provider",
+                "start": "2026-01-01",
+                "end": "2026-01-31",
+                "lookback_bars": 3,
+                "horizon_bars": 1,
+                "actionable_score_threshold": 20,
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(get_backtest_market_data_provider, None)
+
+    assert response.status_code == 200
+    assert response.json()["results"]["AAPL"]["items"][0]["recommendation"]["status"] == "active_watch"
+
+
 def test_walk_forward_api_rejects_too_few_candles_for_lookback():
     client = TestClient(app)
 

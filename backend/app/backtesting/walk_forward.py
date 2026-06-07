@@ -14,6 +14,7 @@ def run_walk_forward_replay(
     horizon_bars=5,
     recommendation_repository=None,
     catalyst_max_age_minutes=None,
+    actionable_score_threshold=70,
 ):
     catalysts = catalysts or []
     market_context = market_context or {"risk_context": "mixed", "spy_trend": "neutral", "qqq_trend": "neutral"}
@@ -34,6 +35,7 @@ def run_walk_forward_replay(
             visible_candles=visible_candles,
             visible_catalysts=_visible_catalysts(catalysts, current_timestamp, catalyst_max_age_minutes),
             market_context=market_context,
+            actionable_score_threshold=actionable_score_threshold,
         )
         outcome = label_recommendation_outcome(
             recommendation,
@@ -65,11 +67,24 @@ def run_walk_forward_replay(
     }
 
 
-def _build_historical_recommendation(ticker, current_candle, visible_candles, visible_catalysts, market_context):
+def _build_historical_recommendation(
+    ticker,
+    current_candle,
+    visible_candles,
+    visible_catalysts,
+    market_context,
+    actionable_score_threshold=70,
+):
     snapshot = _snapshot_from_candle(ticker, current_candle, previous_close=visible_candles[-2].get("close"))
     features = build_features(snapshot, visible_candles, [current_candle])
     catalyst = select_best_catalyst(_normalized_historical_catalysts(visible_catalysts, current_candle.get("timestamp_ms")))
-    recommendation = build_recommendation(ticker, features, catalyst, market_context)
+    recommendation = build_recommendation(
+        ticker,
+        features,
+        catalyst,
+        market_context,
+        actionable_score_threshold=actionable_score_threshold,
+    )
     recommendation["inputs"]["snapshot"] = snapshot
     recommendation["inputs"]["walk_forward"] = {
         "current_timestamp_ms": current_candle.get("timestamp_ms"),

@@ -72,6 +72,32 @@ def test_caution_recommendation_preserves_risk_off_warning():
     assert "risk-off market context" in recommendation["reason"]
 
 
+def test_recommendation_uses_custom_actionable_threshold_for_research_runs():
+    features = {
+        "gap_percent": 1.0,
+        "relative_volume": 1.5,
+        "liquidity_score": 90,
+        "price": 210,
+        "spread_percent": 0.03,
+        "current_price": 212,
+        "vwap": 211,
+    }
+    catalyst = {"catalyst_type": "unknown", "signal": "neutral", "score": 0, "strength": "weak"}
+    market_context = {"risk_context": "supportive"}
+
+    recommendation = build_recommendation(
+        "AAPL",
+        features,
+        catalyst,
+        market_context,
+        actionable_score_threshold=35,
+    )
+
+    assert recommendation["setup_score"] == 38
+    assert recommendation["status"] == "active_watch"
+    assert recommendation["entry_zone"] == [209.88, 214.12]
+
+
 def test_recommendation_contains_structured_input_snapshots_for_learning():
     features = {"gap_percent": 1.2, "relative_volume": 2.5, "liquidity_score": 100, "price": 210, "spread_percent": 0.03, "current_price": 212, "opening_range_high": 211.5, "vwap": 211}
     catalyst = {"catalyst_type": "unknown", "signal": "neutral", "score": 0, "strength": "weak"}

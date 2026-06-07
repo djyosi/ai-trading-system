@@ -82,6 +82,34 @@ def test_opening_range_breakout_scores_without_catalyst_when_volume_and_market_s
     assert result["setup_score"] == 76
 
 
+def test_custom_actionable_threshold_can_promote_research_setups_without_changing_defaults():
+    features = {
+        "gap_percent": 1.0,
+        "relative_volume": 1.5,
+        "liquidity_score": 90,
+        "price": 210,
+        "spread_percent": 0.03,
+        "current_price": 212,
+        "vwap": 211,
+    }
+    catalyst = {"signal": "neutral", "score": 0, "catalyst_type": "unknown"}
+    market_context = {"risk_context": "supportive"}
+
+    default_result = score_day_trade_setup("AAPL", features, catalyst, market_context)
+    research_result = score_day_trade_setup(
+        "AAPL",
+        features,
+        catalyst,
+        market_context,
+        actionable_score_threshold=35,
+    )
+
+    assert default_result["setup_score"] == 38
+    assert default_result["status"] == "no_trade"
+    assert research_result["setup_score"] == 38
+    assert research_result["status"] == "active_watch"
+
+
 def test_risk_off_market_context_caps_status_to_caution():
     result = score_day_trade_setup(
         ticker="AAPL",

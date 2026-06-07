@@ -3,7 +3,7 @@ MIN_LIQUIDITY_SCORE = 60
 MAX_SPREAD_PERCENT = 0.75
 
 
-def score_day_trade_setup(ticker, features, catalyst, market_context):
+def score_day_trade_setup(ticker, features, catalyst, market_context, actionable_score_threshold=70):
     reject_reasons = _reject_reasons(features)
     warnings = []
     if market_context.get("risk_context") == "risk_off":
@@ -11,7 +11,7 @@ def score_day_trade_setup(ticker, features, catalyst, market_context):
 
     strategy = _select_strategy(features, catalyst)
     setup_score = _calculate_score(features, catalyst, market_context, strategy)
-    status = _status(setup_score, reject_reasons, warnings)
+    status = _status(setup_score, reject_reasons, warnings, actionable_score_threshold)
 
     return {
         "ticker": ticker,
@@ -66,12 +66,12 @@ def _calculate_score(features, catalyst, market_context, strategy):
     return max(0, min(round(score), 100))
 
 
-def _status(setup_score, reject_reasons, warnings):
+def _status(setup_score, reject_reasons, warnings, actionable_score_threshold=70):
     if reject_reasons:
         return "no_trade"
     if "market_context_risk_off" in warnings:
         return "caution"
-    if setup_score >= 70:
+    if setup_score >= actionable_score_threshold:
         return "active_watch"
     return "no_trade"
 

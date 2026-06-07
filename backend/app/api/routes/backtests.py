@@ -29,6 +29,7 @@ class WalkForwardReplayRequest(BaseModel):
     thresholds: list[int] = Field(default_factory=lambda: [50, 60, 70, 80, 85, 90])
     min_trades: int = Field(default=1, ge=1)
     catalyst_max_age_minutes: Optional[int] = Field(default=None, ge=0)
+    actionable_score_threshold: int = Field(default=70, ge=0, le=100)
 
 
 class BatchBacktestRequest(BaseModel):
@@ -45,6 +46,7 @@ class BatchBacktestRequest(BaseModel):
     thresholds: list[int] = Field(default_factory=lambda: [50, 60, 70, 80, 85, 90])
     min_trades: int = Field(default=1, ge=1)
     catalyst_max_age_minutes: Optional[int] = Field(default=None, ge=0)
+    actionable_score_threshold: int = Field(default=70, ge=0, le=100)
 
 
 def get_backtest_market_data_provider():
@@ -70,6 +72,7 @@ async def run_walk_forward_backtest(
         horizon_bars=request.horizon_bars,
         recommendation_repository=repository,
         catalyst_max_age_minutes=request.catalyst_max_age_minutes,
+        actionable_score_threshold=request.actionable_score_threshold,
     )
     result["data_source"] = request.source or "request_payload"
     result["source_candle_count"] = len(candles)
@@ -103,6 +106,7 @@ async def run_batch_backtest(request: BatchBacktestRequest, market_data_provider
         lookback_bars=request.lookback_bars,
         horizon_bars=request.horizon_bars,
         catalyst_max_age_minutes=request.catalyst_max_age_minutes,
+        actionable_score_threshold=request.actionable_score_threshold,
     )
     result["news_catalysts_fetched"] = news_catalysts_fetched
     if request.include_threshold_sweep or request.include_research_report:
