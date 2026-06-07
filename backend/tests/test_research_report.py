@@ -169,6 +169,79 @@ def test_batch_research_report_summarizes_ticker_diagnostics():
     ]
 
 
+def test_batch_research_report_summarizes_edge_diagnostics_by_score_catalyst_and_market_context():
+    items = [
+        {
+            "recommendation": {
+                "status": "active_watch",
+                "setup_score": 35,
+                "strategy": "gap_and_go",
+                "inputs": {
+                    "catalyst": {"catalyst_type": "earnings_beat"},
+                    "market_context": {"risk_context": "supportive"},
+                },
+            },
+            "outcome": {"status": "closed", "realized_r": 1.5, "target_hit": True},
+        },
+        {
+            "recommendation": {
+                "status": "active_watch",
+                "setup_score": 52,
+                "strategy": "gap_and_go",
+                "inputs": {
+                    "catalyst": {"catalyst_type": "analyst_upgrade"},
+                    "market_context": {"risk_context": "mixed"},
+                },
+            },
+            "outcome": {"status": "closed", "realized_r": -1.0, "stop_hit": True},
+        },
+        {
+            "recommendation": {
+                "status": "active_watch",
+                "setup_score": 58,
+                "strategy": "gap_and_go",
+                "inputs": {
+                    "catalyst": {"catalyst_type": "analyst_upgrade"},
+                    "market_context": {"risk_context": "mixed"},
+                },
+            },
+            "outcome": {"status": "closed", "realized_r": 1.0, "target_hit": True},
+        },
+        {
+            "recommendation": {
+                "status": "no_trade",
+                "setup_score": 28,
+                "inputs": {"catalyst": {"catalyst_type": "unknown"}, "market_context": {"risk_context": "risk_off"}},
+            },
+            "outcome": {"status": "skipped"},
+        },
+    ]
+    batch = {
+        "tickers_total": 1,
+        "tickers_completed": 1,
+        "tickers_failed": 0,
+        "evaluated_bars_total": 4,
+        "results": {"AAPL": {**_result("AAPL", closed_total=3, expectancy_r=0.5, win_rate=0.67), "items": items}},
+        "errors": {},
+        "aggregate_threshold_sweep": {"best_threshold": {"threshold": 50, "trade_count": 2, "expectancy_r": 0.0}, "min_trades": 1},
+    }
+
+    report = build_batch_research_report(batch)
+
+    assert report["edge_diagnostics"]["score_bands"] == [
+        {"segment": "30-39", "trade_count": 1, "wins": 1, "win_rate": 1.0, "expectancy_r": 1.5},
+        {"segment": "50-59", "trade_count": 2, "wins": 1, "win_rate": 0.5, "expectancy_r": 0.0},
+    ]
+    assert report["edge_diagnostics"]["catalyst_types"] == [
+        {"segment": "earnings_beat", "trade_count": 1, "wins": 1, "win_rate": 1.0, "expectancy_r": 1.5},
+        {"segment": "analyst_upgrade", "trade_count": 2, "wins": 1, "win_rate": 0.5, "expectancy_r": 0.0},
+    ]
+    assert report["edge_diagnostics"]["market_contexts"] == [
+        {"segment": "supportive", "trade_count": 1, "wins": 1, "win_rate": 1.0, "expectancy_r": 1.5},
+        {"segment": "mixed", "trade_count": 2, "wins": 1, "win_rate": 0.5, "expectancy_r": 0.0},
+    ]
+
+
 def test_batch_research_report_warns_when_actionability_is_low():
     items = [
         {"recommendation": {"status": "no_trade", "reject_reasons": ["liquidity_score_below_min"]}},

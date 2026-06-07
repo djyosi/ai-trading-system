@@ -30,6 +30,7 @@ def build_batch_research_report(batch_result, top_n=5):
     top_segments = _top_segments(batch_result.get("aggregate_threshold_tuning_by_segment") or {}, top_n)
     recommendation_diagnostics = _recommendation_diagnostics(batch_result.get("results") or {})
     ticker_diagnostics = _ticker_diagnostics(batch_result.get("results") or {}, top_n)
+    edge_diagnostics = _edge_diagnostics(batch_result.get("results") or {}, top_n)
     _append_actionability_warnings(warnings, recommendation_diagnostics)
 
     return {
@@ -42,8 +43,67 @@ def build_batch_research_report(batch_result, top_n=5):
         "top_segments": top_segments,
         "recommendation_diagnostics": recommendation_diagnostics,
         "ticker_diagnostics": ticker_diagnostics,
+        "edge_diagnostics": edge_diagnostics,
         "warnings": warnings,
     }
+
+
+def _edge_diagnostics(results, top_n):
+    closed_items = []
+    for result in results.values():
+        for item in result.get("items", []):
+            recommendation = item.get("recommendation") or {}
+            outcome = item.get("outcome") or {}
+            if recommendation.get("status") == "no_trade" or outcome.get("status") != "closed":
+                continue
+            closed_items.append(item)
+    return {
+        "score_bands": _summarize_edge_segments(closed_items, _score_band, top_n=top_n),
+        "catalyst_types": _summarize_edge_segments(closed_items, _catalyst_type, top_n=top_n),
+        "market_contexts": _summarize_edge_segments(closed_items, _risk_context, top_n=top_n),
+    }
+
+
+def _summarize_edge_segments(items, key_fn, top_n):
+    groups = {}
+    for item in items:
+        key = key_fn(item)
+        outcome = item.get("outcome") or {}
+        realized_r = outcome.get("realized_r")
+        if realized_r is None:
+            continue
+        groups.setdefault(key, []).append(outcome)
+    rows = []
+    for segment, outcomes in sorted(groups.items()):
+        realized_values = [outcome.get("realized_r") for outcome in outcomes]
+        wins = sum(1 for outcome in outcomes if outcome.get("target_hit") or (outcome.get("realized_r") or 0) > 0)
+        rows.append(
+            {
+                "segment": segment,
+                "trade_count": len(outcomes),
+                "wins": wins,
+                "win_rate": round(wins / len(outcomes), 2) if outcomes else None,
+                "expectancy_r": round(sum(realized_values) / len(realized_values), 2),
+            }
+        )
+    return sorted(rows, key=lambda row: (row["expectancy_r"], row["trade_count"], row["segment"]), reverse=True)[:top_n]
+
+
+def _score_band(item):
+    score = ((item.get("recommendation") or {}).get("setup_score") or 0)
+    lower = int(score // 10) * 10
+    upper = lower + 9
+    return f"{lower}-{upper}"
+
+
+def _catalyst_type(item):
+    recommendation = item.get("recommendation") or {}
+    return (((recommendation.get("inputs") or {}).get("catalyst") or {}).get("catalyst_type")) or "unknown"
+
+
+def _risk_context(item):
+    recommendation = item.get("recommendation") or {}
+    return (((recommendation.get("inputs") or {}).get("market_context") or {}).get("risk_context")) or "unknown"
 
 
 def _append_actionability_warnings(warnings, diagnostics, min_actionable_rate=0.5):
