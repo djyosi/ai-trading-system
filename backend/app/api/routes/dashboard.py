@@ -21,6 +21,29 @@ def ranked_recommendations(limit: int = 25, db: Session = Depends(get_db)):
     return {"items_total": len(items), "items": items}
 
 
+def _rank_evidence(record):
+    evidence = record.research_evidence or {}
+    tagged = "market_context_edge_candidate" in (record.research_tags or [])
+    expectancy_r = evidence.get("expectancy_r")
+    trade_count = evidence.get("trade_count")
+    status = "eligible"
+    if not tagged:
+        status = "not_tagged"
+    elif (expectancy_r or 0) <= 0:
+        status = "non_positive_expectancy"
+    elif (trade_count or 0) < MIN_EVIDENCE_TRADES_FOR_RANK_BOOST:
+        status = "insufficient_sample"
+
+    return {
+        "market_context_boost_eligible": status == "eligible",
+        "market_context_boost_status": status,
+        "market_context_segment": evidence.get("market_context_segment"),
+        "expectancy_r": expectancy_r,
+        "trade_count": trade_count,
+        "min_trade_count": MIN_EVIDENCE_TRADES_FOR_RANK_BOOST,
+    }
+
+
 def _rank_components(record):
     return {
         "base_setup_score": record.setup_score,
@@ -29,9 +52,10 @@ def _rank_components(record):
 
 
 def _rank_reasons(record):
-    if _market_context_evidence_boost(record) == 0:
+    evidence = _rank_evidence(record)
+    if not evidence["market_context_boost_eligible"]:
         return []
-    segment = (record.research_evidence or {}).get("market_context_segment", "unknown_segment")
+    segment = evidence["market_context_segment"] or "unknown_segment"
     return [f"market_context_edge_candidate: {segment}"]
 
 
@@ -41,14 +65,7 @@ def _rank_score(record):
 
 
 def _market_context_evidence_boost(record):
-    if "market_context_edge_candidate" not in (record.research_tags or []):
-        return 0
-    evidence = record.research_evidence or {}
-    if (evidence.get("expectancy_r") or 0) <= 0:
-        return 0
-    if (evidence.get("trade_count") or 0) < MIN_EVIDENCE_TRADES_FOR_RANK_BOOST:
-        return 0
-    return 5
+    return 5 if _rank_evidence(record)["market_context_boost_eligible"] else 0
 
 
 def _ranked_item(rank, record):
@@ -63,6 +80,7 @@ def _ranked_item(rank, record):
         "rank_score": _rank_score(record),
         "rank_components": _rank_components(record),
         "rank_reasons": _rank_reasons(record),
+        "rank_evidence": _rank_evidence(record),
         "confidence": record.confidence,
         "strategy": record.strategy,
         "strategy_segment": record.strategy_segment,

@@ -109,6 +109,14 @@ def test_dashboard_ranking_uses_small_context_evidence_boost():
     assert payload["items"][0]["rank_reasons"] == [
         "market_context_edge_candidate: gap_and_go|earnings_beat|supportive"
     ]
+    assert payload["items"][0]["rank_evidence"] == {
+        "market_context_boost_eligible": True,
+        "market_context_boost_status": "eligible",
+        "market_context_segment": "gap_and_go|earnings_beat|supportive",
+        "expectancy_r": 0.12,
+        "trade_count": 38,
+        "min_trade_count": 10,
+    }
     assert payload["items"][1]["rank_score"] == 90
     assert payload["items"][1]["rank_components"] == {
         "base_setup_score": 90,
@@ -145,6 +153,14 @@ def test_dashboard_does_not_boost_tiny_sample_research_evidence():
     assert [item["ticker"] for item in payload["items"]] == ["RAW_SCORE_ONLY", "TAGGED_BUT_TINY_SAMPLE"]
     assert payload["items"][1]["rank_score"] == 88
     assert payload["items"][1]["rank_components"]["market_context_evidence_boost"] == 0
+    assert payload["items"][1]["rank_evidence"] == {
+        "market_context_boost_eligible": False,
+        "market_context_boost_status": "insufficient_sample",
+        "market_context_segment": "gap_and_go|earnings_beat|supportive",
+        "expectancy_r": 1.2,
+        "trade_count": 4,
+        "min_trade_count": 10,
+    }
     assert payload["items"][1]["rank_reasons"] == []
     app.dependency_overrides.clear()
 
@@ -176,5 +192,13 @@ def test_dashboard_does_not_boost_non_positive_research_evidence():
     assert [item["ticker"] for item in payload["items"]] == ["RAW_SCORE_ONLY", "TAGGED_BUT_BAD_EVIDENCE"]
     assert payload["items"][1]["rank_score"] == 88
     assert payload["items"][1]["rank_components"]["market_context_evidence_boost"] == 0
+    assert payload["items"][1]["rank_evidence"] == {
+        "market_context_boost_eligible": False,
+        "market_context_boost_status": "non_positive_expectancy",
+        "market_context_segment": "gap_and_go|earnings_beat|mixed",
+        "expectancy_r": 0.0,
+        "trade_count": 25,
+        "min_trade_count": 10,
+    }
     assert payload["items"][1]["rank_reasons"] == []
     app.dependency_overrides.clear()
