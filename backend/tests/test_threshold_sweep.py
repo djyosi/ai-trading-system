@@ -28,6 +28,15 @@ def test_sweep_score_thresholds_default_thresholds_include_research_candidate_sc
     assert result["best_threshold"] is not None
 
 
+def test_sweep_score_thresholds_requires_positive_expectancy_for_best_threshold_by_default():
+    items = [_item(42, 0.0), _item(41, -1.0), _item(40, 1.0)]
+
+    result = sweep_score_thresholds(items, thresholds=[40], min_trades=3)
+
+    assert result["thresholds"][0]["expectancy_r"] == 0.0
+    assert result["best_threshold"] is None
+
+
 def test_sweep_score_thresholds_compares_trade_count_win_rate_and_expectancy():
     items = [_item(91, 2.0), _item(82, -1.0), _item(74, 0.5), _item(52, -1.0)]
 

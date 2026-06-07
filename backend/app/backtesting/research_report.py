@@ -14,7 +14,7 @@ def build_batch_research_report(batch_result, top_n=5):
     if best_threshold is None:
         min_trades = threshold_sweep.get("min_trades")
         if min_trades is not None:
-            warnings.append(f"No threshold met the minimum trade requirement of {min_trades}")
+            warnings.append(f"No threshold met both minimum trades ({min_trades}) and positive expectancy")
 
     symbol_rows = [_symbol_row(ticker, result) for ticker, result in sorted((batch_result.get("results") or {}).items())]
     top_symbols = sorted(

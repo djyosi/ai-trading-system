@@ -191,6 +191,29 @@ def test_batch_research_report_warns_when_actionability_is_low():
     assert "Most common no-trade reason: liquidity_score_below_min (1)" in report["warnings"]
 
 
+def test_batch_research_report_warns_when_no_threshold_has_positive_expectancy():
+    batch = {
+        "tickers_total": 1,
+        "tickers_completed": 1,
+        "tickers_failed": 0,
+        "evaluated_bars_total": 3,
+        "results": {"AAPL": {"items": []}},
+        "aggregate_threshold_sweep": {
+            "min_trades": 3,
+            "best_threshold": None,
+            "thresholds": [
+                {"threshold": 40, "trade_count": 3, "expectancy_r": 0.0},
+                {"threshold": 50, "trade_count": 2, "expectancy_r": 1.0},
+            ],
+        },
+    }
+
+    report = build_batch_research_report(batch)
+
+    assert report["status"] == "needs_more_data"
+    assert "No threshold met both minimum trades (3) and positive expectancy" in report["warnings"]
+
+
 def test_batch_research_report_flags_insufficient_threshold_sample():
     batch = {
         "tickers_total": 1,
@@ -206,4 +229,4 @@ def test_batch_research_report_flags_insufficient_threshold_sample():
 
     assert report["status"] == "needs_more_data"
     assert report["recommended_threshold"] is None
-    assert "No threshold met the minimum trade requirement of 5" in report["warnings"]
+    assert "No threshold met both minimum trades (5) and positive expectancy" in report["warnings"]
