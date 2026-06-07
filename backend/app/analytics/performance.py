@@ -1,3 +1,4 @@
+from app.analytics.research_evidence import rank_evidence_status
 from app.models.outcome import OutcomeRecord
 from app.models.recommendation import RecommendationRecord
 
@@ -36,6 +37,10 @@ def summarize_performance(db):
             lambda recommendation: (recommendation.research_evidence or {}).get(
                 "market_context_segment", "no_market_context_segment"
             ),
+        ),
+        "by_rank_evidence_status": _group_metrics(
+            closed,
+            lambda recommendation: rank_evidence_status(recommendation)["market_context_boost_status"],
         ),
     }
 

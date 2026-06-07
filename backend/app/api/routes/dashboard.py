@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.analytics.research_evidence import rank_evidence_status
 from app.db.session import get_db
 from app.models.recommendation import RecommendationRecord
-
-MIN_EVIDENCE_TRADES_FOR_RANK_BOOST = 10
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -22,26 +21,7 @@ def ranked_recommendations(limit: int = 25, db: Session = Depends(get_db)):
 
 
 def _rank_evidence(record):
-    evidence = record.research_evidence or {}
-    tagged = "market_context_edge_candidate" in (record.research_tags or [])
-    expectancy_r = evidence.get("expectancy_r")
-    trade_count = evidence.get("trade_count")
-    status = "eligible"
-    if not tagged:
-        status = "not_tagged"
-    elif (expectancy_r or 0) <= 0:
-        status = "non_positive_expectancy"
-    elif (trade_count or 0) < MIN_EVIDENCE_TRADES_FOR_RANK_BOOST:
-        status = "insufficient_sample"
-
-    return {
-        "market_context_boost_eligible": status == "eligible",
-        "market_context_boost_status": status,
-        "market_context_segment": evidence.get("market_context_segment"),
-        "expectancy_r": expectancy_r,
-        "trade_count": trade_count,
-        "min_trade_count": MIN_EVIDENCE_TRADES_FOR_RANK_BOOST,
-    }
+    return rank_evidence_status(record)
 
 
 def _rank_components(record):
