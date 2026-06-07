@@ -125,6 +125,50 @@ def test_batch_research_report_summarizes_no_trade_reasons():
     }
 
 
+def test_batch_research_report_summarizes_ticker_diagnostics():
+    aapl_items = [
+        {"recommendation": {"status": "no_trade", "reject_reasons": ["liquidity_score_below_min"]}},
+        {"recommendation": {"status": "active_watch", "reject_reasons": []}},
+    ]
+    msft_items = [
+        {"recommendation": {"status": "no_trade", "reject_reasons": ["price_below_min"]}},
+        {"recommendation": {"status": "no_trade", "reject_reasons": ["price_below_min"]}},
+    ]
+    batch = {
+        "tickers_total": 2,
+        "tickers_completed": 2,
+        "tickers_failed": 0,
+        "evaluated_bars_total": 4,
+        "results": {
+            "AAPL": {**_result("AAPL", closed_total=1, expectancy_r=0.3, win_rate=1.0), "items": aapl_items},
+            "MSFT": {**_result("MSFT", closed_total=0, expectancy_r=None, win_rate=None), "items": msft_items},
+        },
+        "errors": {},
+        "aggregate_threshold_sweep": {"best_threshold": None, "min_trades": 5},
+    }
+
+    report = build_batch_research_report(batch)
+
+    assert report["ticker_diagnostics"] == [
+        {
+            "ticker": "MSFT",
+            "total_recommendations": 2,
+            "actionable_total": 0,
+            "no_trade_total": 2,
+            "actionable_rate": 0.0,
+            "top_no_trade_reason": "price_below_min",
+        },
+        {
+            "ticker": "AAPL",
+            "total_recommendations": 2,
+            "actionable_total": 1,
+            "no_trade_total": 1,
+            "actionable_rate": 0.5,
+            "top_no_trade_reason": "liquidity_score_below_min",
+        },
+    ]
+
+
 def test_batch_research_report_flags_insufficient_threshold_sample():
     batch = {
         "tickers_total": 1,

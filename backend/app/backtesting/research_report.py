@@ -29,6 +29,7 @@ def build_batch_research_report(batch_result, top_n=5):
 
     top_segments = _top_segments(batch_result.get("aggregate_threshold_tuning_by_segment") or {}, top_n)
     recommendation_diagnostics = _recommendation_diagnostics(batch_result.get("results") or {})
+    ticker_diagnostics = _ticker_diagnostics(batch_result.get("results") or {}, top_n)
 
     return {
         "status": "research_ready" if best_threshold is not None else "needs_more_data",
@@ -39,32 +40,55 @@ def build_batch_research_report(batch_result, top_n=5):
         "weak_symbols": weak_symbols,
         "top_segments": top_segments,
         "recommendation_diagnostics": recommendation_diagnostics,
+        "ticker_diagnostics": ticker_diagnostics,
         "warnings": warnings,
     }
 
 
+def _ticker_diagnostics(results, top_n):
+    rows = []
+    for ticker, result in sorted(results.items()):
+        diagnostics = _items_diagnostics(result.get("items", []), include_rates=True)
+        rows.append({"ticker": ticker, **diagnostics})
+    return sorted(
+        rows,
+        key=lambda row: (row["actionable_rate"], -row["no_trade_total"], row["ticker"]),
+    )[:top_n]
+
+
 def _recommendation_diagnostics(results):
+    aggregate_items = []
+    for result in results.values():
+        aggregate_items.extend(result.get("items", []))
+    return _items_diagnostics(aggregate_items, include_reasons=True)
+
+
+def _items_diagnostics(items, include_reasons=False, include_rates=False):
     total = 0
     no_trade_total = 0
     reasons = {}
-    for result in results.values():
-        for item in result.get("items", []):
-            recommendation = item.get("recommendation") or {}
-            total += 1
-            if recommendation.get("status") != "no_trade":
-                continue
-            no_trade_total += 1
-            for reason in recommendation.get("reject_reasons") or ["score_below_actionable_threshold"]:
-                reasons[reason] = reasons.get(reason, 0) + 1
-    return {
+    for item in items:
+        recommendation = item.get("recommendation") or {}
+        total += 1
+        if recommendation.get("status") != "no_trade":
+            continue
+        no_trade_total += 1
+        for reason in recommendation.get("reject_reasons") or ["score_below_actionable_threshold"]:
+            reasons[reason] = reasons.get(reason, 0) + 1
+    reason_rows = [
+        {"reason": reason, "count": count} for reason, count in sorted(reasons.items(), key=lambda item: (-item[1], item[0]))
+    ]
+    diagnostics = {
         "total_recommendations": total,
         "actionable_total": total - no_trade_total,
         "no_trade_total": no_trade_total,
-        "no_trade_reasons": [
-            {"reason": reason, "count": count}
-            for reason, count in sorted(reasons.items(), key=lambda item: (-item[1], item[0]))
-        ],
     }
+    if include_rates:
+        diagnostics["actionable_rate"] = round((total - no_trade_total) / total, 4) if total else 0.0
+        diagnostics["top_no_trade_reason"] = reason_rows[0]["reason"] if reason_rows else None
+    if include_reasons:
+        diagnostics["no_trade_reasons"] = reason_rows
+    return diagnostics
 
 
 def _top_segments(segment_tuning, top_n):
