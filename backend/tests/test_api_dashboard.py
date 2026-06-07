@@ -25,15 +25,21 @@ def _client_with_db():
     return TestClient(app), TestingSessionLocal
 
 
-def _recommendation(ticker, score, status="active_watch", with_research_evidence=True):
+def _recommendation(
+    ticker,
+    score,
+    status="active_watch",
+    with_research_evidence=True,
+    research_evidence_override=None,
+):
     research_tags = ["segment_edge_candidate", "market_context_edge_candidate"] if with_research_evidence else []
-    research_evidence = {
+    research_evidence = research_evidence_override if research_evidence_override is not None else ({
         "market_context_segment": "gap_and_go|earnings_beat|supportive",
         "recommended_threshold": 60,
         "trade_count": 38,
         "win_rate": 0.45,
         "expectancy_r": 0.12,
-    } if with_research_evidence else {}
+    } if with_research_evidence else {})
     return {
         "ticker": ticker,
         "timeframe": "day_trade",
@@ -108,5 +114,36 @@ def test_dashboard_ranking_uses_small_context_evidence_boost():
         "base_setup_score": 90,
         "market_context_evidence_boost": 0,
     }
+    assert payload["items"][1]["rank_reasons"] == []
+    app.dependency_overrides.clear()
+
+
+def test_dashboard_does_not_boost_non_positive_research_evidence():
+    client, SessionLocal = _client_with_db()
+    db = SessionLocal()
+    repo = RecommendationRepository(db)
+    repo.save_recommendation(_recommendation("RAW_SCORE_ONLY", 90, with_research_evidence=False))
+    repo.save_recommendation(
+        _recommendation(
+            "TAGGED_BUT_BAD_EVIDENCE",
+            88,
+            research_evidence_override={
+                "market_context_segment": "gap_and_go|earnings_beat|mixed",
+                "recommended_threshold": 60,
+                "trade_count": 25,
+                "win_rate": 0.4,
+                "expectancy_r": 0.0,
+            },
+        )
+    )
+    db.close()
+
+    response = client.get("/api/dashboard/ranked-recommendations")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [item["ticker"] for item in payload["items"]] == ["RAW_SCORE_ONLY", "TAGGED_BUT_BAD_EVIDENCE"]
+    assert payload["items"][1]["rank_score"] == 88
+    assert payload["items"][1]["rank_components"]["market_context_evidence_boost"] == 0
     assert payload["items"][1]["rank_reasons"] == []
     app.dependency_overrides.clear()

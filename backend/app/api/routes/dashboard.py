@@ -39,7 +39,12 @@ def _rank_score(record):
 
 
 def _market_context_evidence_boost(record):
-    return 5 if "market_context_edge_candidate" in (record.research_tags or []) else 0
+    if "market_context_edge_candidate" not in (record.research_tags or []):
+        return 0
+    evidence = record.research_evidence or {}
+    if (evidence.get("expectancy_r") or 0) <= 0:
+        return 0
+    return 5
 
 
 def _ranked_item(rank, record):
