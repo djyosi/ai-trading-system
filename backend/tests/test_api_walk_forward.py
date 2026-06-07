@@ -278,6 +278,45 @@ def test_batch_backtest_api_can_return_research_report():
     app.dependency_overrides.clear()
 
 
+def test_batch_backtest_api_can_fetch_provider_news_catalysts_per_ticker():
+    class FakeProvider:
+        def __init__(self):
+            self.news_calls = []
+
+        async def get_daily_candles(self, ticker, start, end):
+            return [_candle(i, 10 + i, 9 + i, 9.5 + i) for i in range(1, 8)]
+
+        async def get_news(self, ticker, start, end):
+            self.news_calls.append({"ticker": ticker, "start": start, "end": end})
+            return [{"type": "earnings_beat", "timestamp_ms": 3 * 86_400_000, "headline": f"{ticker} beats"}]
+
+    provider = FakeProvider()
+    app.dependency_overrides[get_backtest_market_data_provider] = lambda: provider
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/backtests/batch",
+        json={
+            "tickers": ["AAPL", "MSFT"],
+            "start": "2025-01-01",
+            "end": "2025-02-01",
+            "lookback_bars": 3,
+            "horizon_bars": 1,
+            "include_news_catalysts": True,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert provider.news_calls == [
+        {"ticker": "AAPL", "start": "2025-01-01", "end": "2025-02-01"},
+        {"ticker": "MSFT", "start": "2025-01-01", "end": "2025-02-01"},
+    ]
+    assert payload["news_catalysts_fetched"] == 2
+    assert payload["results"]["AAPL"]["items"][0]["recommendation"]["inputs"]["catalyst"]["catalyst_type"] == "earnings_beat"
+    app.dependency_overrides.clear()
+
+
 def test_walk_forward_api_rejects_too_few_candles_for_lookback():
     client = TestClient(app)
 

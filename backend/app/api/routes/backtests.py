@@ -40,6 +40,7 @@ class BatchBacktestRequest(BaseModel):
     horizon_bars: int = Field(default=5, ge=1)
     include_threshold_sweep: bool = False
     include_research_report: bool = False
+    include_news_catalysts: bool = False
     thresholds: list[int] = Field(default_factory=lambda: [50, 60, 70, 80, 85, 90])
     min_trades: int = Field(default=1, ge=1)
 
@@ -81,16 +82,25 @@ async def run_walk_forward_backtest(
 
 @router.post("/batch")
 async def run_batch_backtest(request: BatchBacktestRequest, market_data_provider=Depends(get_backtest_market_data_provider)):
+    tickers = [ticker.upper() for ticker in request.tickers]
+    catalysts_by_ticker = dict(request.catalysts_by_ticker)
+    news_catalysts_fetched = 0
+    if request.include_news_catalysts:
+        fetched = await _fetch_news_catalysts(tickers, request.start, request.end, market_data_provider)
+        for ticker, catalysts in fetched.items():
+            catalysts_by_ticker[ticker] = [*catalysts_by_ticker.get(ticker, []), *catalysts]
+            news_catalysts_fetched += len(catalysts)
     result = await run_historical_batch(
-        tickers=[ticker.upper() for ticker in request.tickers],
+        tickers=tickers,
         market_data_provider=market_data_provider,
         start=request.start,
         end=request.end,
-        catalysts_by_ticker=request.catalysts_by_ticker,
+        catalysts_by_ticker=catalysts_by_ticker,
         market_context=request.market_context,
         lookback_bars=request.lookback_bars,
         horizon_bars=request.horizon_bars,
     )
+    result["news_catalysts_fetched"] = news_catalysts_fetched
     if request.include_threshold_sweep or request.include_research_report:
         items = [item for ticker_result in result["results"].values() for item in ticker_result["items"]]
         result["aggregate_threshold_sweep"] = sweep_score_thresholds(
@@ -102,6 +112,12 @@ async def run_batch_backtest(request: BatchBacktestRequest, market_data_provider
     if request.include_research_report:
         result["research_report"] = build_batch_research_report(result)
     return result
+
+
+async def _fetch_news_catalysts(tickers, start, end, market_data_provider):
+    if not hasattr(market_data_provider, "get_news"):
+        raise HTTPException(status_code=400, detail="Configured provider does not support news catalysts")
+    return {ticker: await market_data_provider.get_news(ticker, start, end) for ticker in tickers}
 
 
 async def _resolve_candles(request, market_data_provider):
