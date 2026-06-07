@@ -154,7 +154,33 @@ def test_contract_win_vwap_reclaim_is_tagged_as_research_supported_segment():
     assert result["strategy"] == "vwap_hold_reclaim"
     assert result["strategy_segment"] == "vwap_hold_reclaim|contract_win"
     assert result["status"] == "active_watch"
-    assert result["research_tags"] == ["segment_edge_candidate"]
+    assert result["research_tags"] == ["segment_edge_candidate", "market_context_edge_candidate"]
+
+
+def test_contract_win_vwap_reclaim_exposes_market_context_research_evidence():
+    result = score_day_trade_setup(
+        ticker="AAPL",
+        features={
+            "gap_percent": 1,
+            "relative_volume": 3,
+            "liquidity_score": 95,
+            "price": 210,
+            "spread_percent": 0.03,
+            "current_price": 212,
+            "vwap": 211,
+        },
+        catalyst={"signal": "bullish", "score": 65, "catalyst_type": "contract_win"},
+        market_context={"risk_context": "supportive"},
+    )
+
+    assert "market_context_edge_candidate" in result["research_tags"]
+    assert result["research_evidence"] == {
+        "market_context_segment": "vwap_hold_reclaim|contract_win|supportive",
+        "recommended_threshold": 60,
+        "trade_count": 74,
+        "win_rate": 0.45,
+        "expectancy_r": 0.11,
+    }
 
 
 def test_risk_off_market_context_caps_status_to_caution():

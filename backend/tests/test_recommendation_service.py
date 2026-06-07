@@ -111,12 +111,39 @@ def test_recommendation_exposes_research_segment_metadata():
             "vwap": 211,
         },
         catalyst={"catalyst_type": "contract_win", "signal": "bullish", "score": 65, "strength": "medium"},
-        market_context={"risk_context": "supportive"},
+        market_context={"risk_context": "neutral"},
     )
 
     assert recommendation["strategy_segment"] == "vwap_hold_reclaim|contract_win"
     assert recommendation["research_tags"] == ["segment_edge_candidate"]
+    assert recommendation["research_evidence"] is None
     assert "research-supported segment" in recommendation["reason"]
+
+
+def test_recommendation_exposes_research_evidence_for_context_supported_segment():
+    recommendation = build_recommendation(
+        ticker="AAPL",
+        features={
+            "gap_percent": 1,
+            "relative_volume": 3,
+            "liquidity_score": 95,
+            "price": 210,
+            "spread_percent": 0.03,
+            "current_price": 212,
+            "vwap": 211,
+        },
+        catalyst={"signal": "bullish", "score": 65, "catalyst_type": "contract_win"},
+        market_context={"risk_context": "supportive"},
+    )
+
+    assert "market_context_edge_candidate" in recommendation["research_tags"]
+    assert recommendation["research_evidence"] == {
+        "market_context_segment": "vwap_hold_reclaim|contract_win|supportive",
+        "recommended_threshold": 60,
+        "trade_count": 74,
+        "win_rate": 0.45,
+        "expectancy_r": 0.11,
+    }
 
 
 def test_recommendation_contains_structured_input_snapshots_for_learning():

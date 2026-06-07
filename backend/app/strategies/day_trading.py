@@ -5,6 +5,22 @@ RESEARCH_SUPPORTED_SEGMENTS = {
     ("vwap_hold_reclaim", "contract_win"),
     ("catalyst_momentum_gap_and_go", "analyst_upgrade"),
 }
+RESEARCH_SUPPORTED_MARKET_CONTEXT_SEGMENTS = {
+    ("vwap_hold_reclaim", "contract_win", "mixed"): {
+        "market_context_segment": "vwap_hold_reclaim|contract_win|mixed",
+        "recommended_threshold": 60,
+        "trade_count": 25,
+        "win_rate": 0.52,
+        "expectancy_r": 0.30,
+    },
+    ("vwap_hold_reclaim", "contract_win", "supportive"): {
+        "market_context_segment": "vwap_hold_reclaim|contract_win|supportive",
+        "recommended_threshold": 60,
+        "trade_count": 74,
+        "win_rate": 0.45,
+        "expectancy_r": 0.11,
+    },
+}
 
 
 def score_day_trade_setup(ticker, features, catalyst, market_context, actionable_score_threshold=70):
@@ -15,7 +31,8 @@ def score_day_trade_setup(ticker, features, catalyst, market_context, actionable
 
     strategy = _select_strategy(features, catalyst)
     strategy_segment = _strategy_segment(strategy, catalyst)
-    research_tags = _apply_segment_policy(strategy, catalyst, reject_reasons, warnings)
+    research_tags = _apply_segment_policy(strategy, catalyst, market_context, reject_reasons, warnings)
+    research_evidence = _research_evidence(strategy, catalyst, market_context)
     setup_score = _calculate_score(features, catalyst, market_context, strategy)
     status = _status(setup_score, reject_reasons, warnings, actionable_score_threshold)
 
@@ -24,6 +41,7 @@ def score_day_trade_setup(ticker, features, catalyst, market_context, actionable
         "strategy": strategy,
         "strategy_segment": strategy_segment,
         "research_tags": research_tags,
+        "research_evidence": research_evidence,
         "direction": "long" if catalyst.get("signal") != "bearish" else "short_watch",
         "setup_score": setup_score,
         "confidence": _confidence(setup_score),
@@ -63,7 +81,7 @@ def _strategy_segment(strategy, catalyst):
     return f"{strategy}|{catalyst.get('catalyst_type') or 'unknown'}"
 
 
-def _apply_segment_policy(strategy, catalyst, reject_reasons, warnings):
+def _apply_segment_policy(strategy, catalyst, market_context, reject_reasons, warnings):
     catalyst_type = catalyst.get("catalyst_type") or "unknown"
     tags = []
     if catalyst.get("signal") == "bearish":
@@ -71,9 +89,17 @@ def _apply_segment_policy(strategy, catalyst, reject_reasons, warnings):
         warnings.append("short_model_not_implemented")
     if (strategy, catalyst_type) in RESEARCH_SUPPORTED_SEGMENTS and catalyst.get("signal") != "bearish":
         tags.append("segment_edge_candidate")
+    if _research_evidence(strategy, catalyst, market_context) and catalyst.get("signal") != "bearish":
+        tags.append("market_context_edge_candidate")
     if catalyst_type == "unknown":
         warnings.append("unknown_catalyst_requires_confirmation")
     return tags
+
+
+def _research_evidence(strategy, catalyst, market_context):
+    catalyst_type = catalyst.get("catalyst_type") or "unknown"
+    risk_context = market_context.get("risk_context") or "unknown"
+    return RESEARCH_SUPPORTED_MARKET_CONTEXT_SEGMENTS.get((strategy, catalyst_type, risk_context))
 
 
 def _calculate_score(features, catalyst, market_context, strategy):

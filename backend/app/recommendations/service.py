@@ -23,6 +23,7 @@ def build_recommendation(ticker, features, catalyst, market_context, actionable_
         "strategy": strategy_result["strategy"],
         "strategy_segment": strategy_result["strategy_segment"],
         "research_tags": strategy_result["research_tags"],
+        "research_evidence": strategy_result["research_evidence"],
         "entry_trigger": strategy_result["entry_trigger"],
         "entry_zone": trade_plan["entry_zone"],
         "stop_loss": trade_plan["stop_loss"],
