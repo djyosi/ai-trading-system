@@ -18,6 +18,8 @@ def rank_evidence_status(recommendation):
     status = "eligible"
     if not tagged:
         status = "not_tagged"
+    elif not _has_complete_rank_evidence(evidence):
+        status = "incomplete_evidence"
     elif (expectancy_r or 0) <= 0:
         status = "non_positive_expectancy"
     elif (trade_count or 0) < MIN_EVIDENCE_TRADES_FOR_RANK_BOOST:
@@ -33,3 +35,14 @@ def rank_evidence_status(recommendation):
         "trade_count": trade_count,
         "min_trade_count": MIN_EVIDENCE_TRADES_FOR_RANK_BOOST,
     }
+
+
+def _has_complete_rank_evidence(evidence):
+    required_fields = (
+        "market_context_segment",
+        "recommended_threshold",
+        "win_rate",
+        "expectancy_r",
+        "trade_count",
+    )
+    return all(evidence.get(field) is not None for field in required_fields)

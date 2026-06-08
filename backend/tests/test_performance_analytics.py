@@ -174,6 +174,8 @@ def test_summarize_performance_groups_by_rank_evidence_status():
             research_tags=["market_context_edge_candidate"],
             research_evidence={
                 "market_context_segment": "vwap_hold_reclaim|contract_win|supportive",
+                "recommended_threshold": 60,
+                "win_rate": 0.45,
                 "trade_count": 18,
                 "expectancy_r": 0.22,
             },
@@ -187,6 +189,8 @@ def test_summarize_performance_groups_by_rank_evidence_status():
             research_tags=["market_context_edge_candidate"],
             research_evidence={
                 "market_context_segment": "vwap_hold_reclaim|contract_win|supportive",
+                "recommended_threshold": 60,
+                "win_rate": 0.75,
                 "trade_count": 4,
                 "expectancy_r": 0.8,
             },
@@ -200,15 +204,30 @@ def test_summarize_performance_groups_by_rank_evidence_status():
             research_tags=["market_context_edge_candidate"],
             research_evidence={
                 "market_context_segment": "gap_and_go|earnings_beat|mixed",
+                "recommended_threshold": 60,
+                "win_rate": 0.4,
                 "trade_count": 25,
                 "expectancy_r": 0.0,
             },
         )
     )
-    untagged = repo.save_recommendation(_recommendation("DDD", "gap_and_go", "unknown"))
+    incomplete = repo.save_recommendation(
+        _recommendation(
+            "DDD",
+            "gap_and_go",
+            "earnings_beat",
+            research_tags=["market_context_edge_candidate"],
+            research_evidence={
+                "trade_count": 25,
+                "expectancy_r": 0.4,
+            },
+        )
+    )
+    untagged = repo.save_recommendation(_recommendation("EEE", "gap_and_go", "unknown"))
     repo.save_outcome(eligible.id, {"status": "closed", "realized_r": 1.5, "target_hit": True, "stop_hit": False})
     repo.save_outcome(insufficient.id, {"status": "closed", "realized_r": -0.5, "target_hit": False, "stop_hit": True})
     repo.save_outcome(non_positive.id, {"status": "closed", "realized_r": -1.0, "target_hit": False, "stop_hit": True})
+    repo.save_outcome(incomplete.id, {"status": "closed", "realized_r": -0.75, "target_hit": False, "stop_hit": True})
     repo.save_outcome(untagged.id, {"status": "closed", "realized_r": 0.25, "target_hit": True, "stop_hit": False})
 
     summary = summarize_performance(repo.db)
@@ -216,6 +235,7 @@ def test_summarize_performance_groups_by_rank_evidence_status():
     assert summary["by_rank_evidence_status"]["eligible"]["expectancy_r"] == 1.5
     assert summary["by_rank_evidence_status"]["insufficient_sample"]["expectancy_r"] == -0.5
     assert summary["by_rank_evidence_status"]["non_positive_expectancy"]["expectancy_r"] == -1.0
+    assert summary["by_rank_evidence_status"]["incomplete_evidence"]["expectancy_r"] == -0.75
     assert summary["by_rank_evidence_status"]["not_tagged"]["expectancy_r"] == 0.25
 
 
