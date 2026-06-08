@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.backtesting.batch import run_historical_batch
-from app.backtesting.paper_validation_research import run_paper_validation_research
+from app.backtesting.paper_validation_research import PHASE_3_DEFAULT_UNIVERSE_PRESET, run_paper_validation_research
 from app.backtesting.research_report import build_batch_research_report
 from app.backtesting.threshold_sweep import DEFAULT_SCORE_THRESHOLDS, sweep_score_thresholds, tune_thresholds_by_segment
 from app.backtesting.walk_forward import run_walk_forward_replay
@@ -12,7 +12,7 @@ from app.db.session import get_db
 from app.features.market_context import summarize_market_context
 from app.providers.massive import MassiveProvider
 from app.repositories.recommendations import RecommendationRepository
-from app.universe.presets import resolve_universe_preset
+from app.universe.presets import UNIVERSE_PRESETS, resolve_universe_preset
 
 router = APIRouter(prefix="/backtests", tags=["backtests"])
 
@@ -62,7 +62,7 @@ class BatchBacktestRequest(BaseModel):
 
 class PaperValidationResearchRequest(BaseModel):
     tickers: list[str] = Field(default_factory=list)
-    universe_preset: str = "liquid_research_500"
+    universe_preset: str = PHASE_3_DEFAULT_UNIVERSE_PRESET
     start: str
     end: str
     catalysts_by_ticker: dict[str, list[dict[str, Any]]] = Field(default_factory=dict)
@@ -80,6 +80,19 @@ class PaperValidationResearchRequest(BaseModel):
 
 def get_backtest_market_data_provider():
     return MassiveProvider()
+
+
+@router.get("/universe-presets")
+def universe_presets():
+    broad = [_preset_summary(name) for name in sorted(UNIVERSE_PRESETS) if name.startswith("liquid_research_")]
+    broad = sorted(broad, key=lambda item: item["count"])
+    default_count = len(UNIVERSE_PRESETS[PHASE_3_DEFAULT_UNIVERSE_PRESET])
+    return {
+        "phase_3_default_preset": PHASE_3_DEFAULT_UNIVERSE_PRESET,
+        "phase_3_default_count": default_count,
+        "broad_presets": broad,
+        "sector_presets": [_preset_summary(name) for name in sorted(UNIVERSE_PRESETS) if name.startswith("sector_")],
+    }
 
 
 @router.post("/walk-forward")
@@ -206,6 +219,17 @@ def _resolve_batch_tickers(request):
     if not deduped:
         raise ValueError("Either tickers or universe_preset is required")
     return deduped
+
+
+def _preset_summary(name):
+    tickers = UNIVERSE_PRESETS[name]
+    return {
+        "name": name,
+        "count": len(tickers),
+        "unique_count": len(set(tickers)),
+        "first": tickers[0] if tickers else None,
+        "last": tickers[-1] if tickers else None,
+    }
 
 
 async def _resolve_batch_market_context(request, market_data_provider):

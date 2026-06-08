@@ -5,11 +5,14 @@ from app.features.market_context import summarize_market_context
 from app.universe.presets import resolve_universe_preset
 
 
+PHASE_3_DEFAULT_UNIVERSE_PRESET = "liquid_research_500"
+
+
 async def run_paper_validation_research(
     market_data_provider,
     start,
     end,
-    universe_preset="liquid_research_500",
+    universe_preset=PHASE_3_DEFAULT_UNIVERSE_PRESET,
     tickers=None,
     catalysts_by_ticker=None,
     include_news_catalysts=False,
