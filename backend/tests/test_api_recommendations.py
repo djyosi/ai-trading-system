@@ -72,6 +72,19 @@ def test_list_recommendations_endpoint_returns_latest_recommendations():
 
     assert response.status_code == 200
     payload = response.json()
+    assert payload["rank_policy"] == {
+        "market_context_evidence_boost": 5,
+        "min_evidence_trades_for_rank_boost": 10,
+        "requires_positive_expectancy": True,
+        "requires_complete_evidence": True,
+        "required_evidence_fields": [
+            "market_context_segment",
+            "recommended_threshold",
+            "win_rate",
+            "expectancy_r",
+            "trade_count",
+        ],
+    }
     assert len(payload["items"]) == 2
     assert payload["items"][0]["ticker"] == "PAX"
     assert payload["items"][0]["strategy_segment"] == "catalyst_momentum_gap_and_go|analyst_upgrade"
@@ -104,6 +117,7 @@ def test_get_recommendation_endpoint_returns_single_record():
     assert response.json()["ticker"] == "PAX"
     assert response.json()["strategy"] == "catalyst_momentum_gap_and_go"
     assert response.json()["strategy_segment"] == "catalyst_momentum_gap_and_go|analyst_upgrade"
+    assert response.json()["rank_policy"]["requires_complete_evidence"] is True
     assert response.json()["research_evidence"]["expectancy_r"] == 0.12
     assert response.json()["rank_evidence"]["market_context_boost_status"] == "eligible"
     assert response.json()["rank_evidence"]["market_context_boost_eligible"] is True
