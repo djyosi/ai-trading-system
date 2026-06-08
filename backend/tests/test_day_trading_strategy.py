@@ -183,6 +183,35 @@ def test_contract_win_vwap_reclaim_exposes_market_context_research_evidence():
     }
 
 
+def test_analyst_upgrade_gap_and_go_exposes_market_context_research_evidence():
+    result = score_day_trade_setup(
+        ticker="AAPL",
+        features={
+            "gap_percent": 6,
+            "relative_volume": 3,
+            "liquidity_score": 95,
+            "price": 210,
+            "spread_percent": 0.03,
+            "current_price": 214,
+            "vwap": 211,
+        },
+        catalyst={"signal": "bullish", "score": 80, "catalyst_type": "analyst_upgrade"},
+        market_context={"risk_context": "supportive"},
+    )
+
+    assert result["strategy"] == "catalyst_momentum_gap_and_go"
+    assert result["strategy_segment"] == "catalyst_momentum_gap_and_go|analyst_upgrade"
+    assert "segment_edge_candidate" in result["research_tags"]
+    assert "market_context_edge_candidate" in result["research_tags"]
+    assert result["research_evidence"] == {
+        "market_context_segment": "catalyst_momentum_gap_and_go|analyst_upgrade|supportive",
+        "recommended_threshold": 60,
+        "trade_count": 38,
+        "win_rate": 0.45,
+        "expectancy_r": 0.12,
+    }
+
+
 def test_risk_off_market_context_caps_status_to_caution():
     result = score_day_trade_setup(
         ticker="AAPL",

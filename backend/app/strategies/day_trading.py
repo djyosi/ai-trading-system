@@ -20,6 +20,13 @@ RESEARCH_SUPPORTED_MARKET_CONTEXT_SEGMENTS = {
         "win_rate": 0.45,
         "expectancy_r": 0.11,
     },
+    ("catalyst_momentum_gap_and_go", "analyst_upgrade", "supportive"): {
+        "market_context_segment": "catalyst_momentum_gap_and_go|analyst_upgrade|supportive",
+        "recommended_threshold": 60,
+        "trade_count": 38,
+        "win_rate": 0.45,
+        "expectancy_r": 0.12,
+    },
 }
 
 
