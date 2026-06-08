@@ -27,6 +27,8 @@ def rank_evidence_status(recommendation):
         "market_context_boost_eligible": status == "eligible",
         "market_context_boost_status": status,
         "market_context_segment": evidence.get("market_context_segment"),
+        "recommended_threshold": evidence.get("recommended_threshold"),
+        "win_rate": evidence.get("win_rate"),
         "expectancy_r": expectancy_r,
         "trade_count": trade_count,
         "min_trade_count": MIN_EVIDENCE_TRADES_FOR_RANK_BOOST,
