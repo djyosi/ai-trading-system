@@ -61,6 +61,7 @@ async def run_paper_validation_research(
     )
     batch_result["research_report"] = build_batch_research_report(batch_result)
 
+    market_context_source = "provider_etfs" if include_market_context else "none"
     return {
         "run_type": "phase_3_paper_validation_research",
         "universe_preset": universe_preset,
@@ -73,7 +74,26 @@ async def run_paper_validation_research(
         "evaluated_bars_total": batch_result["evaluated_bars_total"],
         "errors": batch_result["errors"],
         "news_catalysts_fetched": news_catalysts_fetched,
-        "market_context_source": "provider_etfs" if include_market_context else "none",
+        "market_context_source": market_context_source,
+        "run_configuration": {
+            "data_source": "provider_history",
+            "universe_preset": universe_preset,
+            "tickers_requested": len(resolved_tickers),
+            "start": start,
+            "end": end,
+            "include_news_catalysts": include_news_catalysts,
+            "include_market_context": include_market_context,
+            "market_context_source": market_context_source,
+            "lookback_bars": lookback_bars,
+            "horizon_bars": horizon_bars,
+            "catalyst_max_age_minutes": catalyst_max_age_minutes,
+            "actionable_score_threshold": actionable_score_threshold,
+            "thresholds": thresholds,
+            "min_trades": min_trades,
+            "paper_account_equity": paper_account_equity,
+            "paper_risk_fraction": paper_risk_fraction,
+            "orders_enabled": False,
+        },
         "paper_validation": _paper_validation_summary(batch_result["paper_validation"]),
         "aggregate_threshold_sweep": batch_result["aggregate_threshold_sweep"],
         "aggregate_threshold_tuning_by_segment": batch_result["aggregate_threshold_tuning_by_segment"],

@@ -53,6 +53,25 @@ async def test_paper_validation_research_runner_defaults_to_broad_paper_safe_sum
     assert provider.candle_calls[0] == {"ticker": "AAPL", "start": "2026-01-01", "end": "2026-02-01"}
     assert provider.candle_calls[-1] == {"ticker": "ABNB", "start": "2026-01-01", "end": "2026-02-01"}
     assert len({call["ticker"] for call in provider.candle_calls}) == 100
+    assert result["run_configuration"] == {
+        "data_source": "provider_history",
+        "universe_preset": "liquid_research_100",
+        "tickers_requested": 100,
+        "start": "2026-01-01",
+        "end": "2026-02-01",
+        "include_news_catalysts": False,
+        "include_market_context": False,
+        "market_context_source": "none",
+        "lookback_bars": 3,
+        "horizon_bars": 1,
+        "catalyst_max_age_minutes": None,
+        "actionable_score_threshold": 20,
+        "thresholds": [20, 40, 60],
+        "min_trades": 1,
+        "paper_account_equity": 100_000,
+        "paper_risk_fraction": 0.01,
+        "orders_enabled": False,
+    }
     assert result["paper_validation"]["mode"] == "paper_simulation"
     assert result["paper_validation"]["orders_enabled"] is False
     assert result["paper_validation"]["data_source"] == "historical_backtest"
