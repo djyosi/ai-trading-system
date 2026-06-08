@@ -100,6 +100,13 @@ def test_list_recommendations_endpoint_returns_latest_recommendations():
         "trade_count": 38,
         "min_trade_count": 10,
     }
+    assert payload["items"][0]["rank_components"] == {
+        "base_setup_score": 93,
+        "market_context_evidence_boost": 5,
+    }
+    assert payload["items"][0]["rank_reasons"] == [
+        "market_context_edge_candidate: catalyst_momentum_gap_and_go|analyst_upgrade|supportive"
+    ]
     assert payload["items"][0]["input_snapshot"] == {"features": {}, "catalyst": {}, "market_context": {}}
     app.dependency_overrides.clear()
 
@@ -121,6 +128,13 @@ def test_get_recommendation_endpoint_returns_single_record():
     assert response.json()["research_evidence"]["expectancy_r"] == 0.12
     assert response.json()["rank_evidence"]["market_context_boost_status"] == "eligible"
     assert response.json()["rank_evidence"]["market_context_boost_eligible"] is True
+    assert response.json()["rank_components"] == {
+        "base_setup_score": 93,
+        "market_context_evidence_boost": 5,
+    }
+    assert response.json()["rank_reasons"] == [
+        "market_context_edge_candidate: catalyst_momentum_gap_and_go|analyst_upgrade|supportive"
+    ]
     app.dependency_overrides.clear()
 
 

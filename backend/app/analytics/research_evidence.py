@@ -46,6 +46,29 @@ def rank_evidence_status(recommendation):
     }
 
 
+def rank_components(recommendation):
+    return {
+        "base_setup_score": recommendation.setup_score,
+        "market_context_evidence_boost": _market_context_evidence_boost(recommendation),
+    }
+
+
+def rank_reasons(recommendation):
+    evidence = rank_evidence_status(recommendation)
+    if not evidence["market_context_boost_eligible"]:
+        return []
+    return [f"market_context_edge_candidate: {evidence['market_context_segment']}"]
+
+
+def rank_score(recommendation):
+    components = rank_components(recommendation)
+    return components["base_setup_score"] + components["market_context_evidence_boost"]
+
+
+def _market_context_evidence_boost(recommendation):
+    return MARKET_CONTEXT_EVIDENCE_RANK_BOOST if rank_evidence_status(recommendation)["market_context_boost_eligible"] else 0
+
+
 def _has_complete_rank_evidence(evidence):
     market_context_segment = evidence.get("market_context_segment")
     if not isinstance(market_context_segment, str) or not market_context_segment.strip():

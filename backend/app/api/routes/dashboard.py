@@ -1,11 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.analytics.research_evidence import (
-    MARKET_CONTEXT_EVIDENCE_RANK_BOOST,
-    rank_evidence_policy,
-    rank_evidence_status,
-)
+from app.analytics.research_evidence import rank_components, rank_evidence_policy, rank_evidence_status, rank_reasons, rank_score
 from app.db.session import get_db
 from app.models.recommendation import RecommendationRecord
 
@@ -29,27 +25,15 @@ def _rank_evidence(record):
 
 
 def _rank_components(record):
-    return {
-        "base_setup_score": record.setup_score,
-        "market_context_evidence_boost": _market_context_evidence_boost(record),
-    }
+    return rank_components(record)
 
 
 def _rank_reasons(record):
-    evidence = _rank_evidence(record)
-    if not evidence["market_context_boost_eligible"]:
-        return []
-    segment = evidence["market_context_segment"] or "unknown_segment"
-    return [f"market_context_edge_candidate: {segment}"]
+    return rank_reasons(record)
 
 
 def _rank_score(record):
-    components = _rank_components(record)
-    return components["base_setup_score"] + components["market_context_evidence_boost"]
-
-
-def _market_context_evidence_boost(record):
-    return MARKET_CONTEXT_EVIDENCE_RANK_BOOST if _rank_evidence(record)["market_context_boost_eligible"] else 0
+    return rank_score(record)
 
 
 def _ranked_item(rank, record):
