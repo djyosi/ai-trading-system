@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.backtesting.batch import run_historical_batch
+from app.backtesting.paper_validation_research import run_paper_validation_research
 from app.backtesting.research_report import build_batch_research_report
 from app.backtesting.threshold_sweep import DEFAULT_SCORE_THRESHOLDS, sweep_score_thresholds, tune_thresholds_by_segment
 from app.backtesting.walk_forward import run_walk_forward_replay
@@ -59,6 +60,24 @@ class BatchBacktestRequest(BaseModel):
     paper_risk_fraction: float = Field(default=0.01, gt=0)
 
 
+class PaperValidationResearchRequest(BaseModel):
+    tickers: list[str] = Field(default_factory=list)
+    universe_preset: str = "liquid_research_100"
+    start: str
+    end: str
+    catalysts_by_ticker: dict[str, list[dict[str, Any]]] = Field(default_factory=dict)
+    include_news_catalysts: bool = False
+    include_market_context: bool = False
+    lookback_bars: int = Field(default=20, ge=1)
+    horizon_bars: int = Field(default=5, ge=1)
+    thresholds: list[int] = Field(default_factory=lambda: list(DEFAULT_SCORE_THRESHOLDS))
+    min_trades: int = Field(default=5, ge=1)
+    catalyst_max_age_minutes: Optional[int] = Field(default=None, ge=0)
+    actionable_score_threshold: int = Field(default=30, ge=0, le=100)
+    paper_account_equity: int = Field(default=100_000, gt=0)
+    paper_risk_fraction: float = Field(default=0.01, gt=0)
+
+
 def get_backtest_market_data_provider():
     return MassiveProvider()
 
@@ -99,6 +118,34 @@ async def run_walk_forward_backtest(
             result["items"], thresholds=request.thresholds, min_trades=request.min_trades
         )
     return result
+
+
+@router.post("/paper-validation-research")
+async def run_paper_validation_research_backtest(
+    request: PaperValidationResearchRequest,
+    market_data_provider=Depends(get_backtest_market_data_provider),
+):
+    try:
+        return await run_paper_validation_research(
+            market_data_provider=market_data_provider,
+            start=request.start,
+            end=request.end,
+            universe_preset=request.universe_preset,
+            tickers=request.tickers,
+            catalysts_by_ticker=request.catalysts_by_ticker,
+            include_news_catalysts=request.include_news_catalysts,
+            include_market_context=request.include_market_context,
+            lookback_bars=request.lookback_bars,
+            horizon_bars=request.horizon_bars,
+            catalyst_max_age_minutes=request.catalyst_max_age_minutes,
+            actionable_score_threshold=request.actionable_score_threshold,
+            thresholds=request.thresholds,
+            min_trades=request.min_trades,
+            paper_account_equity=request.paper_account_equity,
+            paper_risk_fraction=request.paper_risk_fraction,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
 
 
 @router.post("/batch")
