@@ -104,6 +104,7 @@ def test_list_recommendations_endpoint_returns_latest_recommendations():
         "base_setup_score": 93,
         "market_context_evidence_boost": 5,
     }
+    assert payload["items"][0]["rank_score"] == 98
     assert payload["items"][0]["rank_reasons"] == [
         "market_context_edge_candidate: catalyst_momentum_gap_and_go|analyst_upgrade|supportive"
     ]
@@ -132,6 +133,7 @@ def test_get_recommendation_endpoint_returns_single_record():
         "base_setup_score": 93,
         "market_context_evidence_boost": 5,
     }
+    assert response.json()["rank_score"] == 98
     assert response.json()["rank_reasons"] == [
         "market_context_edge_candidate: catalyst_momentum_gap_and_go|analyst_upgrade|supportive"
     ]
