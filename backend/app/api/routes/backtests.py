@@ -95,6 +95,32 @@ def universe_presets():
     }
 
 
+@router.post("/paper-validation-research/preflight")
+def paper_validation_research_preflight(request: PaperValidationResearchRequest):
+    try:
+        tickers = _resolve_research_tickers(request.tickers, request.universe_preset)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    market_data_calls = len(tickers) + (3 if request.include_market_context else 0)
+    news_calls = len(tickers) if request.include_news_catalysts else 0
+    estimated_provider_calls = market_data_calls + news_calls
+    warnings = ["large_provider_call_count"] if estimated_provider_calls >= 500 else []
+    return {
+        "run_type": "phase_3_paper_validation_preflight",
+        "universe_preset": request.universe_preset,
+        "tickers_total": len(tickers),
+        "start": request.start,
+        "end": request.end,
+        "market_data_candle_calls": market_data_calls,
+        "news_catalyst_calls": news_calls,
+        "estimated_provider_calls": estimated_provider_calls,
+        "include_news_catalysts": request.include_news_catalysts,
+        "include_market_context": request.include_market_context,
+        "orders_enabled": False,
+        "warnings": warnings,
+    }
+
+
 @router.post("/walk-forward")
 async def run_walk_forward_backtest(
     request: WalkForwardReplayRequest,
@@ -216,6 +242,16 @@ def _resolve_batch_tickers(request):
     if request.universe_preset:
         tickers = [*tickers, *resolve_universe_preset(request.universe_preset)]
     deduped = list(dict.fromkeys(tickers))
+    if not deduped:
+        raise ValueError("Either tickers or universe_preset is required")
+    return deduped
+
+
+def _resolve_research_tickers(tickers, universe_preset):
+    resolved = [ticker.upper() for ticker in tickers]
+    if universe_preset:
+        resolved = [*resolved, *resolve_universe_preset(universe_preset)]
+    deduped = list(dict.fromkeys(resolved))
     if not deduped:
         raise ValueError("Either tickers or universe_preset is required")
     return deduped
