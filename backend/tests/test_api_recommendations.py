@@ -77,6 +77,16 @@ def test_list_recommendations_endpoint_returns_latest_recommendations():
     assert payload["items"][0]["strategy_segment"] == "catalyst_momentum_gap_and_go|analyst_upgrade"
     assert payload["items"][0]["research_tags"] == ["segment_edge_candidate", "market_context_edge_candidate"]
     assert payload["items"][0]["research_evidence"]["market_context_segment"] == "catalyst_momentum_gap_and_go|analyst_upgrade|supportive"
+    assert payload["items"][0]["rank_evidence"] == {
+        "market_context_boost_eligible": True,
+        "market_context_boost_status": "eligible",
+        "market_context_segment": "catalyst_momentum_gap_and_go|analyst_upgrade|supportive",
+        "recommended_threshold": 60,
+        "win_rate": 0.45,
+        "expectancy_r": 0.12,
+        "trade_count": 38,
+        "min_trade_count": 10,
+    }
     assert payload["items"][0]["input_snapshot"] == {"features": {}, "catalyst": {}, "market_context": {}}
     app.dependency_overrides.clear()
 
@@ -95,6 +105,8 @@ def test_get_recommendation_endpoint_returns_single_record():
     assert response.json()["strategy"] == "catalyst_momentum_gap_and_go"
     assert response.json()["strategy_segment"] == "catalyst_momentum_gap_and_go|analyst_upgrade"
     assert response.json()["research_evidence"]["expectancy_r"] == 0.12
+    assert response.json()["rank_evidence"]["market_context_boost_status"] == "eligible"
+    assert response.json()["rank_evidence"]["market_context_boost_eligible"] is True
     app.dependency_overrides.clear()
 
 

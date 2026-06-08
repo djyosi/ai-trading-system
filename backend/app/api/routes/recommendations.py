@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.analytics.research_evidence import rank_evidence_status
 from app.db.session import get_db
 from app.models.recommendation import RecommendationRecord
 from app.repositories.recommendations import RecommendationRepository
@@ -36,6 +37,7 @@ def _serialize_recommendation(record):
         "strategy_segment": record.strategy_segment,
         "research_tags": record.research_tags,
         "research_evidence": record.research_evidence,
+        "rank_evidence": rank_evidence_status(record),
         "entry_trigger": record.entry_trigger,
         "entry_zone": record.entry_zone,
         "stop_loss": record.stop_loss,
