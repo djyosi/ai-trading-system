@@ -1,4 +1,5 @@
 from app.backtesting.walk_forward import run_walk_forward_replay
+from app.paper_trading.validation import summarize_paper_validation_items
 
 
 async def run_historical_batch(
@@ -13,6 +14,9 @@ async def run_historical_batch(
     horizon_bars=5,
     catalyst_max_age_minutes=None,
     actionable_score_threshold=70,
+    include_paper_validation=False,
+    paper_account_equity=100_000,
+    paper_risk_fraction=0.01,
 ):
     catalysts_by_ticker = catalysts_by_ticker or {}
     results = {}
@@ -31,11 +35,14 @@ async def run_historical_batch(
                 horizon_bars=horizon_bars,
                 catalyst_max_age_minutes=catalyst_max_age_minutes,
                 actionable_score_threshold=actionable_score_threshold,
+                include_paper_validation=include_paper_validation,
+                paper_account_equity=paper_account_equity,
+                paper_risk_fraction=paper_risk_fraction,
             )
         except Exception as exc:  # noqa: BLE001 - batch jobs must isolate per-symbol provider failures
             errors[ticker] = str(exc)
 
-    return {
+    result = {
         "tickers_total": len(tickers),
         "tickers_completed": len(results),
         "tickers_failed": len(errors),
@@ -43,3 +50,12 @@ async def run_historical_batch(
         "results": results,
         "errors": errors,
     }
+    if include_paper_validation:
+        result["paper_validation"] = summarize_paper_validation_items(
+            [
+                item
+                for ticker_result in results.values()
+                for item in (ticker_result.get("paper_validation") or {}).get("items", [])
+            ]
+        )
+    return result

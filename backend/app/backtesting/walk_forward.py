@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from app.backtesting.outcomes import label_recommendation_outcome
+from app.paper_trading.validation import validate_paper_recommendations
 from app.scanner.service import build_features, select_best_catalyst
 from app.recommendations.service import build_recommendation
 
@@ -16,11 +17,15 @@ def run_walk_forward_replay(
     recommendation_repository=None,
     catalyst_max_age_minutes=None,
     actionable_score_threshold=70,
+    include_paper_validation=False,
+    paper_account_equity=100_000,
+    paper_risk_fraction=0.01,
 ):
     catalysts = catalysts or []
     market_context = market_context or {"risk_context": "mixed", "spy_trend": "neutral", "qqq_trend": "neutral"}
     sorted_candles = sorted(candles, key=lambda candle: candle.get("timestamp_ms") or 0)
     items = []
+    paper_validation_inputs = []
     persisted = 0
 
     for index in range(lookback_bars, len(sorted_candles)):
@@ -60,9 +65,11 @@ def run_walk_forward_replay(
             )
             recommendation_repository.save_outcome(record.id, outcome)
             persisted += 1
+        if include_paper_validation:
+            paper_validation_inputs.append({"recommendation": recommendation, "candles": future_candles})
         items.append(item)
 
-    return {
+    result = {
         "ticker": ticker,
         "evaluated_bars": len(items),
         "lookback_bars": lookback_bars,
@@ -71,6 +78,13 @@ def run_walk_forward_replay(
         "items": items,
         "summary": _summarize_items(items),
     }
+    if include_paper_validation:
+        result["paper_validation"] = validate_paper_recommendations(
+            paper_validation_inputs,
+            account_equity=paper_account_equity,
+            risk_fraction=paper_risk_fraction,
+        )
+    return result
 
 
 def _build_historical_recommendation(

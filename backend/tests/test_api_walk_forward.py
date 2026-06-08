@@ -389,6 +389,50 @@ def test_batch_backtest_api_can_return_research_report():
     app.dependency_overrides.clear()
 
 
+def test_batch_backtest_api_can_include_paper_validation_summary():
+    class FakeProvider:
+        async def get_daily_candles(self, ticker, start, end):
+            return [
+                _candle(1, 10.0, 9.6, 9.9),
+                _candle(2, 10.2, 9.7, 10.0),
+                _candle(3, 10.4, 9.8, 10.1),
+                _candle(4, 11.8, 10.7, 11.5, volume=3_200_000),
+                _candle(5, 12.8, 11.4, 12.4, volume=2_400_000),
+            ]
+
+    app.dependency_overrides[get_backtest_market_data_provider] = lambda: FakeProvider()
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/backtests/batch",
+        json={
+            "tickers": ["AAPL"],
+            "start": "2025-01-01",
+            "end": "2025-02-01",
+            "lookback_bars": 3,
+            "horizon_bars": 1,
+            "market_context": {"risk_context": "supportive", "spy_trend": "up", "qqq_trend": "up"},
+            "catalysts_by_ticker": {
+                "AAPL": [{"catalyst_type": "analyst_upgrade", "timestamp_ms": 4 * 86_400_000}]
+            },
+            "include_paper_validation": True,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["paper_validation"]["mode"] == "paper_simulation"
+    assert payload["paper_validation"]["orders_enabled"] is False
+    assert payload["paper_validation"]["summary"]["recommendations_total"] == 2
+    assert "evidence_backed" in payload["paper_validation"]["by_evidence_bucket"]
+    assert (
+        payload["paper_validation"]["by_market_context_segment"]
+        ["catalyst_momentum_gap_and_go|analyst_upgrade|supportive"]["recommendations_total"]
+        >= 1
+    )
+    app.dependency_overrides.clear()
+
+
 def test_batch_backtest_api_can_fetch_provider_market_context():
     class FakeProvider:
         def __init__(self):

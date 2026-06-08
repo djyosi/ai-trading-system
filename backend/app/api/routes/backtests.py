@@ -32,6 +32,9 @@ class WalkForwardReplayRequest(BaseModel):
     min_trades: int = Field(default=1, ge=1)
     catalyst_max_age_minutes: Optional[int] = Field(default=None, ge=0)
     actionable_score_threshold: int = Field(default=70, ge=0, le=100)
+    include_paper_validation: bool = False
+    paper_account_equity: int = Field(default=100_000, gt=0)
+    paper_risk_fraction: float = Field(default=0.01, gt=0)
 
 
 class BatchBacktestRequest(BaseModel):
@@ -51,6 +54,9 @@ class BatchBacktestRequest(BaseModel):
     min_trades: int = Field(default=1, ge=1)
     catalyst_max_age_minutes: Optional[int] = Field(default=None, ge=0)
     actionable_score_threshold: int = Field(default=70, ge=0, le=100)
+    include_paper_validation: bool = False
+    paper_account_equity: int = Field(default=100_000, gt=0)
+    paper_risk_fraction: float = Field(default=0.01, gt=0)
 
 
 def get_backtest_market_data_provider():
@@ -77,9 +83,14 @@ async def run_walk_forward_backtest(
         recommendation_repository=repository,
         catalyst_max_age_minutes=request.catalyst_max_age_minutes,
         actionable_score_threshold=request.actionable_score_threshold,
+        include_paper_validation=request.include_paper_validation,
+        paper_account_equity=request.paper_account_equity,
+        paper_risk_fraction=request.paper_risk_fraction,
     )
     result["data_source"] = request.source or "request_payload"
     result["source_candle_count"] = len(candles)
+    if request.include_paper_validation:
+        result["paper_validation"] = _paper_validation_response(result["paper_validation"])
     if request.include_threshold_sweep:
         result["threshold_sweep"] = sweep_score_thresholds(
             result["items"], thresholds=request.thresholds, min_trades=request.min_trades
@@ -116,10 +127,15 @@ async def run_batch_backtest(request: BatchBacktestRequest, market_data_provider
         horizon_bars=request.horizon_bars,
         catalyst_max_age_minutes=request.catalyst_max_age_minutes,
         actionable_score_threshold=request.actionable_score_threshold,
+        include_paper_validation=request.include_paper_validation,
+        paper_account_equity=request.paper_account_equity,
+        paper_risk_fraction=request.paper_risk_fraction,
     )
     result["news_catalysts_fetched"] = news_catalysts_fetched
     result["market_context"] = market_context
     result["market_context_source"] = "provider_etfs" if request.include_market_context else "request_payload"
+    if request.include_paper_validation:
+        result["paper_validation"] = _paper_validation_response(result["paper_validation"])
     if request.universe_preset:
         result["universe_preset"] = request.universe_preset
     if request.include_threshold_sweep or request.include_research_report:
@@ -182,6 +198,15 @@ async def _fetch_news_catalysts(tickers, start, end, market_data_provider):
     if not hasattr(market_data_provider, "get_news"):
         raise HTTPException(status_code=400, detail="Configured provider does not support news catalysts")
     return {ticker: await market_data_provider.get_news(ticker, start, end) for ticker in tickers}
+
+
+def _paper_validation_response(paper_validation):
+    return {
+        "mode": "paper_simulation",
+        "orders_enabled": False,
+        "data_source": "historical_backtest",
+        **paper_validation,
+    }
 
 
 async def _resolve_candles(request, market_data_provider):

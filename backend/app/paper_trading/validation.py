@@ -12,7 +12,10 @@ def validate_paper_recommendations(items, account_equity=100_000, risk_fraction=
             risk_fraction=risk_fraction,
         )
         validated_items.append({"recommendation": recommendation, "paper_result": paper_result})
+    return summarize_paper_validation_items(validated_items)
 
+
+def summarize_paper_validation_items(validated_items):
     return {
         "summary": _summary(validated_items),
         "by_evidence_bucket": _grouped(validated_items, _evidence_bucket),
