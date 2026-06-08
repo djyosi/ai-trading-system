@@ -170,6 +170,38 @@ def test_batch_research_report_recommends_strategy_catalyst_market_context_segme
             "win_rate": 0.67,
         }
     ]
+    assert report["phase_2_readiness"] == {
+        "status": "ready_for_paper_validation",
+        "global_threshold_ready": False,
+        "strategy_catalyst_segment_count": 0,
+        "market_context_segment_count": 1,
+        "blockers": [],
+        "next_step": "paper_validate_evidence_backed_segments",
+    }
+
+
+def test_batch_research_report_marks_phase_2_not_ready_without_segment_evidence():
+    batch = {
+        "tickers_total": 1,
+        "tickers_completed": 1,
+        "tickers_failed": 0,
+        "evaluated_bars_total": 10,
+        "results": {"AAPL": _result("AAPL", closed_total=0, expectancy_r=None, win_rate=None)},
+        "errors": {},
+        "aggregate_threshold_sweep": {"best_threshold": None, "min_trades": 5},
+        "aggregate_threshold_tuning_by_segment": {},
+    }
+
+    report = build_batch_research_report(batch)
+
+    assert report["phase_2_readiness"] == {
+        "status": "needs_more_segment_evidence",
+        "global_threshold_ready": False,
+        "strategy_catalyst_segment_count": 0,
+        "market_context_segment_count": 0,
+        "blockers": ["no_strategy_or_market_context_segment_recommendations"],
+        "next_step": "increase_research_sample_or_improve_catalyst_classification",
+    }
 
 
 def test_batch_research_report_ranks_strategy_catalyst_segments():

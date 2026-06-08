@@ -53,11 +53,37 @@ def build_batch_research_report(batch_result, top_n=5):
         "top_segments": top_segments,
         "segment_threshold_recommendations": segment_threshold_recommendations,
         "market_context_segment_recommendations": market_context_segment_recommendations,
+        "phase_2_readiness": _phase_2_readiness(
+            best_threshold,
+            segment_threshold_recommendations,
+            market_context_segment_recommendations,
+        ),
         "recommendation_diagnostics": recommendation_diagnostics,
         "ticker_diagnostics": ticker_diagnostics,
         "edge_diagnostics": edge_diagnostics,
         "next_research_actions": next_research_actions,
         "warnings": warnings,
+    }
+
+
+def _phase_2_readiness(best_threshold, segment_recommendations, market_context_segment_recommendations):
+    strategy_catalyst_count = len(segment_recommendations or [])
+    market_context_count = len(market_context_segment_recommendations or [])
+    blockers = []
+    if strategy_catalyst_count == 0 and market_context_count == 0:
+        blockers.append("no_strategy_or_market_context_segment_recommendations")
+
+    return {
+        "status": "ready_for_paper_validation" if not blockers else "needs_more_segment_evidence",
+        "global_threshold_ready": best_threshold is not None,
+        "strategy_catalyst_segment_count": strategy_catalyst_count,
+        "market_context_segment_count": market_context_count,
+        "blockers": blockers,
+        "next_step": (
+            "paper_validate_evidence_backed_segments"
+            if not blockers
+            else "increase_research_sample_or_improve_catalyst_classification"
+        ),
     }
 
 
