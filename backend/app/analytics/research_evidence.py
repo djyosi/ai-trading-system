@@ -47,4 +47,7 @@ def rank_evidence_status(recommendation):
 
 
 def _has_complete_rank_evidence(evidence):
-    return all(evidence.get(field) is not None for field in REQUIRED_RANK_EVIDENCE_FIELDS)
+    market_context_segment = evidence.get("market_context_segment")
+    if not isinstance(market_context_segment, str) or not market_context_segment.strip():
+        return False
+    return all(evidence.get(field) is not None for field in REQUIRED_RANK_EVIDENCE_FIELDS if field != "market_context_segment")

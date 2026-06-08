@@ -259,3 +259,34 @@ def test_dashboard_does_not_boost_incomplete_research_evidence():
     }
     assert payload["items"][1]["rank_reasons"] == []
     app.dependency_overrides.clear()
+
+
+def test_dashboard_does_not_boost_empty_market_context_segment_evidence():
+    client, SessionLocal = _client_with_db()
+    db = SessionLocal()
+    repo = RecommendationRepository(db)
+    repo.save_recommendation(_recommendation("RAW_SCORE_ONLY", 90, with_research_evidence=False))
+    repo.save_recommendation(
+        _recommendation(
+            "TAGGED_BUT_EMPTY_SEGMENT",
+            88,
+            research_evidence_override={
+                "market_context_segment": "",
+                "recommended_threshold": 60,
+                "win_rate": 0.45,
+                "trade_count": 25,
+                "expectancy_r": 0.4,
+            },
+        )
+    )
+    db.close()
+
+    response = client.get("/api/dashboard/ranked-recommendations")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [item["ticker"] for item in payload["items"]] == ["RAW_SCORE_ONLY", "TAGGED_BUT_EMPTY_SEGMENT"]
+    assert payload["items"][1]["rank_score"] == 88
+    assert payload["items"][1]["rank_evidence"]["market_context_boost_status"] == "incomplete_evidence"
+    assert payload["items"][1]["rank_reasons"] == []
+    app.dependency_overrides.clear()
