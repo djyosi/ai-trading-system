@@ -1,4 +1,4 @@
-from app.analytics.research_evidence import rank_evidence_status
+from app.analytics.research_evidence import rank_evidence_policy, rank_evidence_status
 from app.models.outcome import OutcomeRecord
 from app.models.recommendation import RecommendationRecord
 
@@ -25,6 +25,7 @@ def summarize_performance(db):
         "average_realized_r": _average(realized_values),
         "expectancy_r": _average(realized_values),
         "no_trade_total": sum(1 for item in recommendations if item.status == "no_trade"),
+        "rank_evidence_policy": rank_evidence_policy(),
         "by_strategy": _group_metrics(closed, lambda recommendation: recommendation.strategy),
         "by_catalyst_type": _group_metrics(
             closed,

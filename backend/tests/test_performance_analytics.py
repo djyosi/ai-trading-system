@@ -71,6 +71,11 @@ def test_summarize_performance_returns_overall_metrics():
     assert summary["average_realized_r"] == 0.5
     assert summary["expectancy_r"] == 0.5
     assert summary["no_trade_total"] == 1
+    assert summary["rank_evidence_policy"] == {
+        "market_context_evidence_boost": 5,
+        "min_evidence_trades_for_rank_boost": 10,
+        "requires_positive_expectancy": True,
+    }
 
 
 def test_summarize_performance_groups_by_strategy_and_catalyst():
