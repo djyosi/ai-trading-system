@@ -526,3 +526,64 @@ def test_batch_research_report_flags_insufficient_threshold_sample():
     assert report["status"] == "needs_more_data"
     assert report["recommended_threshold"] is None
     assert "No threshold met both minimum trades (5) and positive expectancy" in report["warnings"]
+
+
+def test_batch_research_report_summarizes_paper_validation_without_item_dump():
+    batch = {
+        "tickers_total": 1,
+        "tickers_completed": 1,
+        "tickers_failed": 0,
+        "evaluated_bars_total": 2,
+        "results": {"AAPL": _result("AAPL", closed_total=2, expectancy_r=0.25, win_rate=0.5)},
+        "errors": {},
+        "aggregate_threshold_sweep": {"best_threshold": None, "min_trades": 5},
+        "paper_validation": {
+            "mode": "paper_simulation",
+            "orders_enabled": False,
+            "data_source": "historical_backtest",
+            "summary": {
+                "recommendations_total": 2,
+                "closed_total": 2,
+                "skipped_total": 0,
+                "not_triggered_total": 0,
+                "wins": 1,
+                "losses": 1,
+                "win_rate": 0.5,
+                "average_realized_r": 0.25,
+                "expectancy_r": 0.25,
+            },
+            "by_evidence_bucket": {
+                "evidence_backed": {"recommendations_total": 1, "closed_total": 1, "expectancy_r": 1.5},
+                "baseline": {"recommendations_total": 1, "closed_total": 1, "expectancy_r": -1.0},
+            },
+            "by_market_context_segment": {
+                "catalyst_momentum_gap_and_go|analyst_upgrade|supportive": {
+                    "recommendations_total": 1,
+                    "closed_total": 1,
+                    "expectancy_r": 1.5,
+                }
+            },
+            "items": [{"recommendation": {"ticker": "AAPL"}, "paper_result": {"realized_r": 1.5}}],
+        },
+    }
+
+    report = build_batch_research_report(batch)
+
+    assert report["paper_validation"] == {
+        "mode": "paper_simulation",
+        "orders_enabled": False,
+        "data_source": "historical_backtest",
+        "summary": batch["paper_validation"]["summary"],
+        "by_evidence_bucket": batch["paper_validation"]["by_evidence_bucket"],
+        "by_market_context_segment": batch["paper_validation"]["by_market_context_segment"],
+    }
+    assert "items" not in report["paper_validation"]
+    assert report["phase_3_readiness"] == {
+        "status": "paper_validation_started",
+        "orders_enabled": False,
+        "evidence_backed_closed_total": 1,
+        "baseline_closed_total": 1,
+        "evidence_backed_expectancy_r": 1.5,
+        "baseline_expectancy_r": -1.0,
+        "next_step": "expand_paper_validation_sample",
+    }

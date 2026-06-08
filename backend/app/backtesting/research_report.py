@@ -41,9 +41,10 @@ def build_batch_research_report(batch_result, top_n=5):
     ticker_diagnostics = _ticker_diagnostics(batch_result.get("results") or {}, top_n)
     edge_diagnostics = _edge_diagnostics(batch_result.get("results") or {}, top_n)
     next_research_actions = _next_research_actions(threshold_sweep, edge_diagnostics)
+    paper_validation = _paper_validation_report(batch_result.get("paper_validation"))
     _append_actionability_warnings(warnings, recommendation_diagnostics)
 
-    return {
+    report = {
         "status": "research_ready" if best_threshold is not None else "needs_more_data",
         "coverage": coverage,
         "recommended_threshold": best_threshold.get("threshold") if best_threshold else None,
@@ -64,6 +65,10 @@ def build_batch_research_report(batch_result, top_n=5):
         "next_research_actions": next_research_actions,
         "warnings": warnings,
     }
+    if paper_validation:
+        report["paper_validation"] = paper_validation
+        report["phase_3_readiness"] = _phase_3_readiness(paper_validation)
+    return report
 
 
 def _phase_2_readiness(best_threshold, segment_recommendations, market_context_segment_recommendations):
@@ -84,6 +89,33 @@ def _phase_2_readiness(best_threshold, segment_recommendations, market_context_s
             if not blockers
             else "increase_research_sample_or_improve_catalyst_classification"
         ),
+    }
+
+
+def _paper_validation_report(paper_validation):
+    if not paper_validation:
+        return None
+    return {
+        "mode": paper_validation.get("mode", "paper_simulation"),
+        "orders_enabled": paper_validation.get("orders_enabled", False),
+        "data_source": paper_validation.get("data_source", "historical_backtest"),
+        "summary": paper_validation.get("summary", {}),
+        "by_evidence_bucket": paper_validation.get("by_evidence_bucket", {}),
+        "by_market_context_segment": paper_validation.get("by_market_context_segment", {}),
+    }
+
+
+def _phase_3_readiness(paper_validation):
+    evidence = (paper_validation.get("by_evidence_bucket") or {}).get("evidence_backed") or {}
+    baseline = (paper_validation.get("by_evidence_bucket") or {}).get("baseline") or {}
+    return {
+        "status": "paper_validation_started",
+        "orders_enabled": paper_validation.get("orders_enabled", False),
+        "evidence_backed_closed_total": evidence.get("closed_total", 0),
+        "baseline_closed_total": baseline.get("closed_total", 0),
+        "evidence_backed_expectancy_r": evidence.get("expectancy_r"),
+        "baseline_expectancy_r": baseline.get("expectancy_r"),
+        "next_step": "expand_paper_validation_sample",
     }
 
 
