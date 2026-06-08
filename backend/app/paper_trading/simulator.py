@@ -1,6 +1,8 @@
 def simulate_paper_trade(recommendation, candles, account_equity=100_000, risk_fraction=0.01):
     if recommendation.get("status") == "no_trade":
         return {"status": "skipped", "ticker": recommendation.get("ticker"), "exit_reason": "no_trade_recommendation"}
+    if recommendation.get("direction", "long") != "long":
+        return {"status": "skipped", "ticker": recommendation.get("ticker"), "exit_reason": "short_model_not_implemented"}
 
     entry_zone = recommendation.get("entry_zone") or []
     stop_loss = recommendation.get("stop_loss")

@@ -47,6 +47,19 @@ def test_paper_trade_simulation_skips_no_trade_recommendations():
     assert result["exit_reason"] == "no_trade_recommendation"
 
 
+def test_paper_trade_simulation_skips_short_watch_until_short_model_exists():
+    recommendation = _recommendation()
+    recommendation["direction"] = "short_watch"
+
+    result = simulate_paper_trade(recommendation, candles=[_candle(1, 10.1, 9.9, 10.0)])
+
+    assert result == {
+        "status": "skipped",
+        "ticker": "AAPL",
+        "exit_reason": "short_model_not_implemented",
+    }
+
+
 def test_paper_trade_simulation_reports_not_triggered_when_entry_zone_never_trades():
     result = simulate_paper_trade(_recommendation(), candles=[_candle(1, 9.8, 9.2, 9.4)])
 
