@@ -62,7 +62,7 @@ class BatchBacktestRequest(BaseModel):
 
 class PaperValidationResearchRequest(BaseModel):
     tickers: list[str] = Field(default_factory=list)
-    universe_preset: str = "liquid_research_100"
+    universe_preset: str = "liquid_research_500"
     start: str
     end: str
     catalysts_by_ticker: dict[str, list[dict[str, Any]]] = Field(default_factory=dict)

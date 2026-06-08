@@ -55,11 +55,11 @@ def test_paper_validation_research_api_runs_broad_paper_safe_summary():
     assert response.status_code == 200
     payload = response.json()
     assert payload["run_type"] == "phase_3_paper_validation_research"
-    assert payload["universe_preset"] == "liquid_research_100"
+    assert payload["universe_preset"] == "liquid_research_500"
     assert payload["orders_enabled"] is False
-    assert payload["tickers_total"] == 100
+    assert payload["tickers_total"] == 500
     assert provider.candle_calls[0] == {"ticker": "AAPL", "start": "2026-01-01", "end": "2026-02-01"}
-    assert provider.candle_calls[-1] == {"ticker": "ABNB", "start": "2026-01-01", "end": "2026-02-01"}
+    assert len({call["ticker"] for call in provider.candle_calls}) == 500
     assert payload["paper_validation"]["mode"] == "paper_simulation"
     assert payload["paper_validation"]["orders_enabled"] is False
     assert "items" not in payload["paper_validation"]

@@ -46,17 +46,16 @@ async def test_paper_validation_research_runner_defaults_to_broad_paper_safe_sum
     )
 
     assert result["run_type"] == "phase_3_paper_validation_research"
-    assert result["universe_preset"] == "liquid_research_100"
+    assert result["universe_preset"] == "liquid_research_500"
     assert result["orders_enabled"] is False
-    assert result["tickers_total"] == 100
-    assert result["tickers_completed"] == 100
+    assert result["tickers_total"] == 500
+    assert result["tickers_completed"] == 500
     assert provider.candle_calls[0] == {"ticker": "AAPL", "start": "2026-01-01", "end": "2026-02-01"}
-    assert provider.candle_calls[-1] == {"ticker": "ABNB", "start": "2026-01-01", "end": "2026-02-01"}
-    assert len({call["ticker"] for call in provider.candle_calls}) == 100
+    assert len({call["ticker"] for call in provider.candle_calls}) == 500
     assert result["run_configuration"] == {
         "data_source": "provider_history",
-        "universe_preset": "liquid_research_100",
-        "tickers_requested": 100,
+        "universe_preset": "liquid_research_500",
+        "tickers_requested": 500,
         "start": "2026-01-01",
         "end": "2026-02-01",
         "include_news_catalysts": False,

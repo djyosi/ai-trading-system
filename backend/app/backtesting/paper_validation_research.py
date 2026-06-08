@@ -9,7 +9,7 @@ async def run_paper_validation_research(
     market_data_provider,
     start,
     end,
-    universe_preset="liquid_research_100",
+    universe_preset="liquid_research_500",
     tickers=None,
     catalysts_by_ticker=None,
     include_news_catalysts=False,
