@@ -1,5 +1,12 @@
 MIN_EVIDENCE_TRADES_FOR_RANK_BOOST = 10
 MARKET_CONTEXT_EVIDENCE_RANK_BOOST = 5
+REQUIRED_RANK_EVIDENCE_FIELDS = [
+    "market_context_segment",
+    "recommended_threshold",
+    "win_rate",
+    "expectancy_r",
+    "trade_count",
+]
 
 
 def rank_evidence_policy():
@@ -7,6 +14,8 @@ def rank_evidence_policy():
         "market_context_evidence_boost": MARKET_CONTEXT_EVIDENCE_RANK_BOOST,
         "min_evidence_trades_for_rank_boost": MIN_EVIDENCE_TRADES_FOR_RANK_BOOST,
         "requires_positive_expectancy": True,
+        "requires_complete_evidence": True,
+        "required_evidence_fields": REQUIRED_RANK_EVIDENCE_FIELDS,
     }
 
 
@@ -38,11 +47,4 @@ def rank_evidence_status(recommendation):
 
 
 def _has_complete_rank_evidence(evidence):
-    required_fields = (
-        "market_context_segment",
-        "recommended_threshold",
-        "win_rate",
-        "expectancy_r",
-        "trade_count",
-    )
-    return all(evidence.get(field) is not None for field in required_fields)
+    return all(evidence.get(field) is not None for field in REQUIRED_RANK_EVIDENCE_FIELDS)

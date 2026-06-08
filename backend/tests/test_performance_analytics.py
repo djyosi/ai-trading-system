@@ -75,6 +75,14 @@ def test_summarize_performance_returns_overall_metrics():
         "market_context_evidence_boost": 5,
         "min_evidence_trades_for_rank_boost": 10,
         "requires_positive_expectancy": True,
+        "requires_complete_evidence": True,
+        "required_evidence_fields": [
+            "market_context_segment",
+            "recommended_threshold",
+            "win_rate",
+            "expectancy_r",
+            "trade_count",
+        ],
     }
 
 
