@@ -136,6 +136,39 @@ def test_summarize_performance_groups_by_score_band_for_threshold_tuning():
     }
 
 
+def test_summarize_performance_groups_by_rank_score_band_for_boosted_display_rank_learning():
+    repo = _repo()
+    raw_84 = repo.save_recommendation(_recommendation("RAW", "gap_and_go", "earnings_beat", setup_score=84))
+    boosted_84 = repo.save_recommendation(
+        _recommendation(
+            "BOOSTED",
+            "vwap_hold_reclaim",
+            "contract_win",
+            setup_score=84,
+            research_tags=["market_context_edge_candidate"],
+            research_evidence={
+                "market_context_segment": "vwap_hold_reclaim|contract_win|supportive",
+                "recommended_threshold": 60,
+                "trade_count": 24,
+                "win_rate": 0.5,
+                "expectancy_r": 0.3,
+            },
+        )
+    )
+    repo.save_outcome(raw_84.id, {"status": "closed", "realized_r": -1.0, "target_hit": False, "stop_hit": True})
+    repo.save_outcome(boosted_84.id, {"status": "closed", "realized_r": 1.5, "target_hit": True, "stop_hit": False})
+
+    summary = summarize_performance(repo.db)
+
+    assert summary["by_score_band"] == {
+        "70-84": {"closed_total": 2, "wins": 1, "win_rate": 0.5, "average_realized_r": 0.25, "expectancy_r": 0.25},
+    }
+    assert summary["by_rank_score_band"] == {
+        "70-84": {"closed_total": 1, "wins": 0, "win_rate": 0.0, "average_realized_r": -1.0, "expectancy_r": -1.0},
+        "85-100": {"closed_total": 1, "wins": 1, "win_rate": 1.0, "average_realized_r": 1.5, "expectancy_r": 1.5},
+    }
+
+
 def test_summarize_performance_groups_by_research_evidence_for_learning():
     repo = _repo()
     evidence = {

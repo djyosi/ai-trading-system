@@ -1,4 +1,4 @@
-from app.analytics.research_evidence import rank_evidence_policy, rank_evidence_status
+from app.analytics.research_evidence import rank_evidence_policy, rank_evidence_status, rank_score
 from app.models.outcome import OutcomeRecord
 from app.models.recommendation import RecommendationRecord
 
@@ -32,6 +32,7 @@ def summarize_performance(db):
             lambda recommendation: (recommendation.input_snapshot.get("catalyst") or {}).get("catalyst_type", "unknown"),
         ),
         "by_score_band": _group_metrics(closed, lambda recommendation: _score_band(recommendation.setup_score)),
+        "by_rank_score_band": _group_metrics(closed, lambda recommendation: _score_band(rank_score(recommendation))),
         "by_research_tag": _group_metrics_multi(closed, _research_tag_keys),
         "by_market_context_segment": _group_metrics(
             closed,
