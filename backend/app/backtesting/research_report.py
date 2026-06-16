@@ -68,6 +68,8 @@ def build_batch_research_report(batch_result, top_n=5):
     if paper_validation:
         report["paper_validation"] = paper_validation
         report["phase_3_readiness"] = _phase_3_readiness(paper_validation)
+        if report["phase_3_readiness"]["evidence_backed_underperformed_baseline"]:
+            warnings.append("Evidence-backed paper validation underperformed baseline; diagnose loss drivers before scaling")
     return report
 
 
@@ -108,15 +110,36 @@ def _paper_validation_report(paper_validation):
 def _phase_3_readiness(paper_validation):
     evidence = (paper_validation.get("by_evidence_bucket") or {}).get("evidence_backed") or {}
     baseline = (paper_validation.get("by_evidence_bucket") or {}).get("baseline") or {}
+    evidence_expectancy = evidence.get("expectancy_r")
+    baseline_expectancy = baseline.get("expectancy_r")
+    delta = _expectancy_delta(evidence_expectancy, baseline_expectancy)
+    underperformed = delta is not None and delta < 0
     return {
-        "status": "paper_validation_started",
+        "status": "needs_loss_driver_diagnostics" if underperformed else "paper_validation_started",
         "orders_enabled": paper_validation.get("orders_enabled", False),
         "evidence_backed_closed_total": evidence.get("closed_total", 0),
         "baseline_closed_total": baseline.get("closed_total", 0),
-        "evidence_backed_expectancy_r": evidence.get("expectancy_r"),
-        "baseline_expectancy_r": baseline.get("expectancy_r"),
-        "next_step": "expand_paper_validation_sample",
+        "evidence_backed_expectancy_r": evidence_expectancy,
+        "baseline_expectancy_r": baseline_expectancy,
+        "evidence_vs_baseline_delta_r": delta,
+        "evidence_backed_underperformed_baseline": underperformed,
+        "loss_driver_diagnostic_dimensions": _loss_driver_diagnostic_dimensions() if underperformed else [],
+        "next_step": (
+            "diagnose_evidence_backed_loss_drivers_before_scaling"
+            if underperformed
+            else "expand_paper_validation_sample"
+        ),
     }
+
+
+def _expectancy_delta(evidence_expectancy, baseline_expectancy):
+    if evidence_expectancy is None or baseline_expectancy is None:
+        return None
+    return round(evidence_expectancy - baseline_expectancy, 2)
+
+
+def _loss_driver_diagnostic_dimensions():
+    return ["score_bands", "catalyst_types", "market_contexts", "symbols", "evidence_bucket"]
 
 
 def _edge_diagnostics(results, top_n):

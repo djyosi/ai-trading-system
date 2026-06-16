@@ -585,5 +585,53 @@ def test_batch_research_report_summarizes_paper_validation_without_item_dump():
         "baseline_closed_total": 1,
         "evidence_backed_expectancy_r": 1.5,
         "baseline_expectancy_r": -1.0,
+        "evidence_vs_baseline_delta_r": 2.5,
+        "evidence_backed_underperformed_baseline": False,
+        "loss_driver_diagnostic_dimensions": [],
         "next_step": "expand_paper_validation_sample",
     }
+
+
+def test_phase_3_readiness_diagnoses_evidence_backed_underperformance_before_scaling():
+    batch = {
+        "tickers_total": 100,
+        "tickers_completed": 100,
+        "tickers_failed": 0,
+        "evaluated_bars_total": 3960,
+        "results": {},
+        "errors": {},
+        "aggregate_threshold_sweep": {"best_threshold": None, "min_trades": 5},
+        "paper_validation": {
+            "mode": "paper_simulation",
+            "orders_enabled": False,
+            "data_source": "historical_backtest",
+            "summary": {"closed_total": 400, "expectancy_r": -0.09},
+            "by_evidence_bucket": {
+                "evidence_backed": {"closed_total": 40, "expectancy_r": -0.14},
+                "baseline": {"closed_total": 360, "expectancy_r": -0.09},
+            },
+            "by_market_context_segment": {},
+        },
+    }
+
+    report = build_batch_research_report(batch)
+
+    assert report["phase_3_readiness"] == {
+        "status": "needs_loss_driver_diagnostics",
+        "orders_enabled": False,
+        "evidence_backed_closed_total": 40,
+        "baseline_closed_total": 360,
+        "evidence_backed_expectancy_r": -0.14,
+        "baseline_expectancy_r": -0.09,
+        "evidence_vs_baseline_delta_r": -0.05,
+        "evidence_backed_underperformed_baseline": True,
+        "loss_driver_diagnostic_dimensions": [
+            "score_bands",
+            "catalyst_types",
+            "market_contexts",
+            "symbols",
+            "evidence_bucket",
+        ],
+        "next_step": "diagnose_evidence_backed_loss_drivers_before_scaling",
+    }
+    assert "Evidence-backed paper validation underperformed baseline; diagnose loss drivers before scaling" in report["warnings"]
