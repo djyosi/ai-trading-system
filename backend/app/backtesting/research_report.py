@@ -69,6 +69,7 @@ def build_batch_research_report(batch_result, top_n=5):
         report["paper_validation"] = paper_validation
         report["phase_3_readiness"] = _phase_3_readiness(paper_validation)
         if report["phase_3_readiness"]["evidence_backed_underperformed_baseline"]:
+            report["next_research_actions"].append(_phase_3_loss_driver_action(report["phase_3_readiness"]))
             report["phase_3_loss_diagnostics"] = _phase_3_loss_diagnostics(
                 batch_result.get("paper_validation") or {},
                 top_n=top_n,
@@ -133,6 +134,16 @@ def _phase_3_readiness(paper_validation):
             if underperformed
             else "expand_paper_validation_sample"
         ),
+    }
+
+
+def _phase_3_loss_driver_action(phase_3_readiness):
+    return {
+        "action": "diagnose_paper_validation_loss_drivers",
+        "reason": "Evidence-backed paper validation underperformed baseline",
+        "evidence_vs_baseline_delta_r": phase_3_readiness.get("evidence_vs_baseline_delta_r"),
+        "diagnostic_dimensions": phase_3_readiness.get("loss_driver_diagnostic_dimensions", []),
+        "before_next_step": "do_not_scale_until_loss_drivers_are_diagnosed",
     }
 
 

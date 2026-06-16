@@ -635,6 +635,19 @@ def test_phase_3_readiness_diagnoses_evidence_backed_underperformance_before_sca
         "next_step": "diagnose_evidence_backed_loss_drivers_before_scaling",
     }
     assert "Evidence-backed paper validation underperformed baseline; diagnose loss drivers before scaling" in report["warnings"]
+    assert {
+        "action": "diagnose_paper_validation_loss_drivers",
+        "reason": "Evidence-backed paper validation underperformed baseline",
+        "evidence_vs_baseline_delta_r": -0.05,
+        "diagnostic_dimensions": [
+            "score_bands",
+            "catalyst_types",
+            "market_contexts",
+            "symbols",
+            "evidence_bucket",
+        ],
+        "before_next_step": "do_not_scale_until_loss_drivers_are_diagnosed",
+    } in report["next_research_actions"]
 
 
 def test_phase_3_loss_diagnostics_break_down_evidence_backed_underperformance():
