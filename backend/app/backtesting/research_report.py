@@ -69,6 +69,10 @@ def build_batch_research_report(batch_result, top_n=5):
         report["paper_validation"] = paper_validation
         report["phase_3_readiness"] = _phase_3_readiness(paper_validation)
         if report["phase_3_readiness"]["evidence_backed_underperformed_baseline"]:
+            report["phase_3_loss_diagnostics"] = _phase_3_loss_diagnostics(
+                batch_result.get("paper_validation") or {},
+                top_n=top_n,
+            )
             warnings.append("Evidence-backed paper validation underperformed baseline; diagnose loss drivers before scaling")
     return report
 
@@ -142,6 +146,60 @@ def _loss_driver_diagnostic_dimensions():
     return ["score_bands", "catalyst_types", "market_contexts", "symbols", "evidence_bucket"]
 
 
+def _phase_3_loss_diagnostics(paper_validation, top_n):
+    evidence_items = [
+        item
+        for item in paper_validation.get("items", [])
+        if _is_evidence_backed_paper_item(item) and (item.get("paper_result") or {}).get("status") == "closed"
+    ]
+    return {
+        "evidence_backed_loss_drivers": {
+            "score_bands": _summarize_loss_segments(evidence_items, _score_band, top_n=top_n),
+            "catalyst_types": _summarize_loss_segments(evidence_items, _catalyst_type, top_n=top_n),
+            "market_contexts": _summarize_loss_segments(evidence_items, _risk_context, top_n=top_n),
+            "symbols": _summarize_loss_segments(evidence_items, _ticker, top_n=top_n),
+        }
+    }
+
+
+def _is_evidence_backed_paper_item(item):
+    recommendation = item.get("recommendation") or {}
+    return "market_context_edge_candidate" in (recommendation.get("research_tags") or []) and bool(
+        recommendation.get("research_evidence")
+    )
+
+
+def _summarize_loss_segments(items, key_fn, top_n):
+    return sorted(
+        _summarize_paper_segments(items, key_fn),
+        key=lambda row: (row["expectancy_r"], -row["trade_count"], row["segment"]),
+    )[:top_n]
+
+
+def _summarize_paper_segments(items, key_fn):
+    groups = {}
+    for item in items:
+        result = item.get("paper_result") or {}
+        realized_r = result.get("realized_r")
+        if realized_r is None:
+            continue
+        groups.setdefault(key_fn(item), []).append(result)
+    rows = []
+    for segment, results in sorted(groups.items()):
+        realized_values = [result.get("realized_r") for result in results]
+        wins = sum(1 for result in results if (result.get("realized_r") or 0) > 0 or result.get("exit_reason") == "target_hit")
+        rows.append(
+            {
+                "segment": segment,
+                "trade_count": len(results),
+                "wins": wins,
+                "win_rate": round(wins / len(results), 2) if results else None,
+                "expectancy_r": round(sum(realized_values) / len(realized_values), 2),
+            }
+        )
+    return rows
+
+
 def _edge_diagnostics(results, top_n):
     closed_items = []
     for result in results.values():
@@ -198,6 +256,10 @@ def _catalyst_type(item):
 def _risk_context(item):
     recommendation = item.get("recommendation") or {}
     return (((recommendation.get("inputs") or {}).get("market_context") or {}).get("risk_context")) or "unknown"
+
+
+def _ticker(item):
+    return ((item.get("recommendation") or {}).get("ticker")) or "unknown"
 
 
 def _next_research_actions(threshold_sweep, edge_diagnostics):

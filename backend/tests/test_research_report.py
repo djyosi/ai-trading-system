@@ -635,3 +635,99 @@ def test_phase_3_readiness_diagnoses_evidence_backed_underperformance_before_sca
         "next_step": "diagnose_evidence_backed_loss_drivers_before_scaling",
     }
     assert "Evidence-backed paper validation underperformed baseline; diagnose loss drivers before scaling" in report["warnings"]
+
+
+def test_phase_3_loss_diagnostics_break_down_evidence_backed_underperformance():
+    items = [
+        {
+            "recommendation": {
+                "ticker": "AAPL",
+                "status": "active_watch",
+                "setup_score": 78,
+                "research_tags": ["market_context_edge_candidate"],
+                "research_evidence": {
+                    "market_context_segment": "gap_and_go|analyst_upgrade|supportive",
+                },
+                "inputs": {
+                    "catalyst": {"catalyst_type": "analyst_upgrade"},
+                    "market_context": {"risk_context": "supportive"},
+                },
+            },
+            "paper_result": {"status": "closed", "realized_r": -1.0, "exit_reason": "stop_hit"},
+        },
+        {
+            "recommendation": {
+                "ticker": "MSFT",
+                "status": "active_watch",
+                "setup_score": 83,
+                "research_tags": ["market_context_edge_candidate"],
+                "research_evidence": {
+                    "market_context_segment": "vwap_hold_reclaim|contract_win|mixed",
+                },
+                "inputs": {
+                    "catalyst": {"catalyst_type": "contract_win"},
+                    "market_context": {"risk_context": "mixed"},
+                },
+            },
+            "paper_result": {"status": "closed", "realized_r": 0.5, "exit_reason": "target_hit"},
+        },
+        {
+            "recommendation": {
+                "ticker": "NVDA",
+                "status": "active_watch",
+                "setup_score": 78,
+                "research_tags": [],
+                "research_evidence": {},
+                "inputs": {
+                    "catalyst": {"catalyst_type": "earnings_beat"},
+                    "market_context": {"risk_context": "supportive"},
+                },
+            },
+            "paper_result": {"status": "closed", "realized_r": 1.0, "exit_reason": "target_hit"},
+        },
+    ]
+    batch = {
+        "tickers_total": 3,
+        "tickers_completed": 3,
+        "tickers_failed": 0,
+        "evaluated_bars_total": 30,
+        "results": {},
+        "errors": {},
+        "aggregate_threshold_sweep": {"best_threshold": None, "min_trades": 5},
+        "paper_validation": {
+            "mode": "paper_simulation",
+            "orders_enabled": False,
+            "data_source": "historical_backtest",
+            "summary": {"closed_total": 3, "expectancy_r": 0.17},
+            "by_evidence_bucket": {
+                "evidence_backed": {"closed_total": 2, "expectancy_r": -0.25},
+                "baseline": {"closed_total": 1, "expectancy_r": 1.0},
+            },
+            "by_market_context_segment": {},
+            "items": items,
+        },
+    }
+
+    report = build_batch_research_report(batch)
+
+    assert report["phase_3_loss_diagnostics"] == {
+        "evidence_backed_loss_drivers": {
+            "score_bands": [
+                {"segment": "70-79", "trade_count": 1, "wins": 0, "win_rate": 0.0, "expectancy_r": -1.0},
+                {"segment": "80-89", "trade_count": 1, "wins": 1, "win_rate": 1.0, "expectancy_r": 0.5},
+            ],
+            "catalyst_types": [
+                {"segment": "analyst_upgrade", "trade_count": 1, "wins": 0, "win_rate": 0.0, "expectancy_r": -1.0},
+                {"segment": "contract_win", "trade_count": 1, "wins": 1, "win_rate": 1.0, "expectancy_r": 0.5},
+            ],
+            "market_contexts": [
+                {"segment": "supportive", "trade_count": 1, "wins": 0, "win_rate": 0.0, "expectancy_r": -1.0},
+                {"segment": "mixed", "trade_count": 1, "wins": 1, "win_rate": 1.0, "expectancy_r": 0.5},
+            ],
+            "symbols": [
+                {"segment": "AAPL", "trade_count": 1, "wins": 0, "win_rate": 0.0, "expectancy_r": -1.0},
+                {"segment": "MSFT", "trade_count": 1, "wins": 1, "win_rate": 1.0, "expectancy_r": 0.5},
+            ],
+        }
+    }
+    assert "items" not in report["paper_validation"]
