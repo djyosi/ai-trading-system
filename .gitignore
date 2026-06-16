@@ -27,3 +27,6 @@ postgres-data/
 
 # Logs
 *.log
+
+# Local generated research artifacts
+runtime/
