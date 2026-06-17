@@ -77,6 +77,7 @@ def score_day_trade_setup(ticker, features, catalyst, market_context, actionable
         "invalid_if": ["loses VWAP", "relative volume fades", "market context turns risk_off"],
         "reject_reasons": reject_reasons,
         "warnings": warnings,
+        "chart_pattern": features.get("chart_pattern"),
     }
 
 
@@ -144,10 +145,12 @@ def _calculate_score(features, catalyst, market_context, strategy, ticker=None):
     chart_pattern = features.get("chart_pattern")
     if chart_pattern:
         direction = chart_pattern.get("direction")
+        strength = chart_pattern.get("strength")
+        boost = {"weak": 3, "moderate": 5, "strong": 8}.get(strength, 5)
         if direction == "bullish":
-            score += 5
+            score += boost
         elif direction == "bearish":
-            score -= 5
+            score -= boost
     sector = _sector(ticker)
     if sector == "utilities":
         score += 5

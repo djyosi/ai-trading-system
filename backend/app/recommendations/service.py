@@ -32,6 +32,7 @@ def build_recommendation(ticker, features, catalyst, market_context, actionable_
         "invalid_if": strategy_result["invalid_if"],
         "reject_reasons": strategy_result["reject_reasons"],
         "warnings": strategy_result["warnings"],
+        "chart_pattern": strategy_result.get("chart_pattern"),
         "reason": _build_reason(strategy_result, features, catalyst, market_context),
         "inputs": {
             "features": features,
