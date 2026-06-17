@@ -158,6 +158,9 @@ def _calculate_score(features, catalyst, market_context, strategy, ticker=None):
         score += 3
     elif sector == "unknown":
         score -= 3
+    ta_score = features.get("technical_score")
+    if ta_score is not None:
+        score += ta_score * 2  # scale TA score (-7..+7) to ±14 points
     return max(0, min(round(score), 100))
 
 

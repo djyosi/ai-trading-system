@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, HTTPException
 from httpx import AsyncClient
@@ -30,7 +30,7 @@ async def technical_analysis(ticker: str):
         try:
             # Fetch daily candles (last 60 days)
             end = datetime.now(timezone.utc).date()
-            start = end.replace(day=1) - __import__("datetime").timedelta(days=90)
+            start = end - timedelta(days=90)
             response = await client.get(
                 f"/v2/aggs/ticker/{ticker}/range/1/day/{start}/{end}",
                 params={"adjusted": "true", "sort": "asc", "limit": 50000, "apiKey": api_key},
