@@ -62,6 +62,59 @@ def detect_bull_flag(candles, lookback=10):
     return pole_move > 0.05 and abs(flag_move) < abs(pole_move) * 0.3
 
 
+def macd(candles, fast=12, slow=26, signal=9):
+    """MACD line and signal line."""
+    closes = [c["close"] for c in candles if c.get("close") is not None]
+    if len(closes) < slow + signal:
+        return None, None
+
+    def ema(data, period):
+        k = 2 / (period + 1)
+        result = [data[0]]
+        for price in data[1:]:
+            result.append(price * k + result[-1] * (1 - k))
+        return result
+
+    ema_fast = ema(closes, fast)
+    ema_slow = ema(closes, slow)
+    macd_line = [f - s for f, s in zip(ema_fast, ema_slow)]
+    signal_line = ema(macd_line, signal)
+    return macd_line[-1], signal_line[-1]
+
+
+def detect_bullish_engulfing(candles):
+    """Check if last 2 candles form a bullish engulfing."""
+    if len(candles) < 2:
+        return False
+    prev, curr = candles[-2], candles[-1]
+    return (prev["close"] < prev["open"] and
+            curr["close"] > curr["open"] and
+            curr["open"] < prev["close"] and
+            curr["close"] > prev["open"])
+
+
+def detect_three_up_days(candles):
+    """Check if last 3 candles are all up days."""
+    if len(candles) < 3:
+        return False
+    for i in range(-3, 0):
+        if candles[i]["close"] <= candles[i]["open"]:
+            return False
+    return True
+
+
+def detect_volume_rising_3(candles):
+    """Check if volume has increased for 3 consecutive days."""
+    if len(candles) < 3:
+        return False
+    for i in range(-3, -1):
+        if candles[i]["volume"] is None or candles[i + 1]["volume"] is None:
+            return False
+        if candles[i + 1]["volume"] <= candles[i]["volume"]:
+            return False
+    return True
+
+
 def compute_indicators(candles):
     """Compute all indicators for a candle list. Returns dict."""
     if not candles or len(candles) < 3:
@@ -69,25 +122,47 @@ def compute_indicators(candles):
 
     last = candles[-1]
     upper, mid, lower = bollinger_bands(candles)
+    sma_20 = sma(candles, 20) if len(candles) >= 20 else None
     sma_50 = sma(candles, 50) if len(candles) >= 50 else None
     sma_200 = sma(candles, 200) if len(candles) >= 200 else None
     sma_50_1d = sma(candles[:-1], 50) if len(candles) >= 51 else None
     sma_200_1d = sma(candles[:-1], 200) if len(candles) >= 201 else None
+    macd_line, signal_line = macd(candles)
+    macd_1d, signal_1d = macd(candles[:-1]) if len(candles) >= 27 else (None, None)
+    rsi_val = rsi(candles)
+    rsi_3d = rsi(candles[:-3], 14) if len(candles) >= 17 else None
+
+    # Band width for squeeze detection
+    b_width = (upper - lower) / mid if (upper and lower and mid and mid != 0) else None
+    upper_10d, _, lower_10d = bollinger_bands(candles[:-10], 20, 2) if len(candles) > 25 else (None, None, None)
+    b_width_10d = (upper_10d - lower_10d) / mid if (upper_10d and lower_10d and mid and mid != 0) else None
 
     return {
         "close": last.get("close"),
         "volume": last.get("volume"),
+        "sma_20": sma_20,
         "sma_50": sma_50,
         "sma_200": sma_200,
         "sma_50_1d": sma_50_1d,
         "sma_200_1d": sma_200_1d,
-        "rsi_14": rsi(candles),
+        "rsi_14": rsi_val,
+        "rsi_14_3d_ago": rsi_3d,
         "upper_band": upper,
         "middle_band": mid,
         "lower_band": lower,
+        "band_width_pct": b_width,
+        "band_width_10d_ago": b_width_10d,
         "avg_volume_20": avg_volume(candles, 20),
         "low_of_5": low_of_n(candles, 5),
+        "low_of_20": low_of_n(candles, 20),
+        "macd": macd_line,
+        "signal": signal_line,
+        "macd_1d": macd_1d,
+        "signal_1d": signal_1d,
         "bull_flag_detected": detect_bull_flag(candles),
+        "bullish_engulfing_detected": detect_bullish_engulfing(candles),
+        "up_days_3": detect_three_up_days(candles),
+        "volume_rising_3": detect_volume_rising_3(candles),
     }
 
 
