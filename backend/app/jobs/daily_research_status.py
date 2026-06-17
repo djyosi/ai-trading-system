@@ -47,6 +47,11 @@ def latest_daily_research_status(output_dir=DEFAULT_OUTPUT_DIR):
     _copy_if_present(report, status, "tickers_completed")
     _copy_if_present(report, status, "tickers_failed")
     _copy_if_present(report, status, "news_catalysts_fetched")
+    _copy_if_present(report, status, "promotion_gate")
+    _copy_if_present(report, status, "aggregate_threshold_sweep")
+    research = report.get("research_report", {})
+    _copy_if_present(research, status, "segment_threshold_recommendations")
+    _copy_if_present(research, status, "next_research_actions")
     return status
 
 

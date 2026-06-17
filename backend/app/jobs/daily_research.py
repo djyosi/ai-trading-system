@@ -10,7 +10,7 @@ from app.universe.presets import resolve_universe_preset
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_OUTPUT_DIR = REPO_ROOT / "docs" / "daily-research"
+DEFAULT_OUTPUT_DIR = REPO_ROOT / "runtime" / "daily-research"
 
 
 class DailyResearchSafetyError(RuntimeError):
