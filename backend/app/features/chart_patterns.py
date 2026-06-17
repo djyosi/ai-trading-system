@@ -32,6 +32,8 @@ def _is_bullish(candle):
 
 
 def classify_candle_pattern(candle):
+    if not all(k in candle for k in ("open", "high", "low", "close")):
+        return {"pattern": "none", "direction": "neutral", "strength": "none"}
     crange = _range(candle)
     if crange == 0:
         return {"pattern": "none", "direction": "neutral", "strength": "none"}

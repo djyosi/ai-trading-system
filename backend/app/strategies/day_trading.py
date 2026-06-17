@@ -7,6 +7,7 @@ RESEARCH_SUPPORTED_SEGMENTS = {
     ("vwap_hold_reclaim", "contract_win"),
     ("vwap_hold_reclaim", "fda_approval"),
     ("vwap_hold_reclaim", "investigation"),
+    ("vwap_hold_reclaim", "analyst_upgrade"),
     ("catalyst_momentum_gap_and_go", "analyst_upgrade"),
 }
 RESEARCH_SUPPORTED_MARKET_CONTEXT_SEGMENTS = {
@@ -31,6 +32,13 @@ RESEARCH_SUPPORTED_MARKET_CONTEXT_SEGMENTS = {
         "win_rate": 0.71,
         "expectancy_r": 0.79,
     },
+    ("vwap_hold_reclaim", "analyst_upgrade", "mixed"): {
+        "market_context_segment": "vwap_hold_reclaim|analyst_upgrade|mixed",
+        "recommended_threshold": 60,
+        "trade_count": 8,
+        "win_rate": 0.50,
+        "expectancy_r": 0.20,
+    },
     ("catalyst_momentum_gap_and_go", "analyst_upgrade", "supportive"): {
         "market_context_segment": "catalyst_momentum_gap_and_go|analyst_upgrade|supportive",
         "recommended_threshold": 85,
@@ -52,7 +60,7 @@ def score_day_trade_setup(ticker, features, catalyst, market_context, actionable
     research_tags = _apply_segment_policy(strategy, catalyst, market_context, reject_reasons, warnings)
     research_evidence = _research_evidence(strategy, catalyst, market_context)
     setup_score = _calculate_score(features, catalyst, market_context, strategy)
-    status = _status(setup_score, reject_reasons, warnings, actionable_score_threshold)
+    status = _status(setup_score, reject_reasons, warnings, actionable_score_threshold, research_evidence)
 
     return {
         "ticker": ticker,
@@ -143,12 +151,14 @@ def _calculate_score(features, catalyst, market_context, strategy):
     return max(0, min(round(score), 100))
 
 
-def _status(setup_score, reject_reasons, warnings, actionable_score_threshold=70):
+def _status(setup_score, reject_reasons, warnings, actionable_score_threshold=70, research_evidence=None):
     if reject_reasons:
         return "no_trade"
     if "market_context_risk_off" in warnings:
         return "caution"
-    if setup_score >= actionable_score_threshold:
+    segment_threshold = (research_evidence or {}).get("recommended_threshold")
+    effective_threshold = min(actionable_score_threshold, segment_threshold) if segment_threshold else actionable_score_threshold
+    if setup_score >= effective_threshold:
         return "active_watch"
     return "no_trade"
 

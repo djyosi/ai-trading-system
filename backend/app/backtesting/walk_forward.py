@@ -96,7 +96,7 @@ def _build_historical_recommendation(
     actionable_score_threshold=70,
 ):
     snapshot = _snapshot_from_candle(ticker, current_candle, previous_close=visible_candles[-2].get("close"))
-    features = build_features(snapshot, visible_candles, [current_candle])
+    features = build_features(snapshot, visible_candles, visible_candles[-2:] if len(visible_candles) >= 2 else visible_candles)
     catalyst = select_best_catalyst(_normalized_historical_catalysts(visible_catalysts, current_candle.get("timestamp_ms")))
     recommendation = build_recommendation(
         ticker,

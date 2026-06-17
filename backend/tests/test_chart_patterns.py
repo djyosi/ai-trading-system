@@ -112,3 +112,19 @@ def test_neutral_candle():
     result = classify_candle_pattern(candle)
 
     assert result["pattern"] in ("neutral", "none")
+
+
+def test_missing_open_returns_none_safely():
+    """Candle without open field should not crash."""
+    candle = {"high": 102, "low": 98, "close": 100}
+
+    result = classify_candle_pattern(candle)
+
+    assert result["pattern"] == "none"
+
+
+def test_missing_fields_returns_none_safely():
+    """Completely malformed candle should not crash."""
+    result = classify_candle_pattern({"ticker": "AAPL"})
+
+    assert result["pattern"] == "none"
