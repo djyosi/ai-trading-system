@@ -297,4 +297,6 @@ for ticker, sector in _SECTOR_MAP.items():
 
 def get_sector(ticker: str) -> str:
     """Return the sector for a given ticker symbol, case-insensitive."""
+    if not ticker or not isinstance(ticker, str):
+        return "unknown"
     return _SECTOR_MAP.get(ticker.upper().strip(), "unknown")
