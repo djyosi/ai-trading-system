@@ -11,6 +11,7 @@ from app.api.routes.performance import router as performance_router
 from app.api.routes.recommendations import router as recommendations_router
 from app.api.routes.scanner import router as scanner_router
 from app.api.routes.screener import router as screener_router
+from app.api.routes.ta_screener_api import router as ta_screener_router
 from app.api.routes.technicals import router as technicals_router
 from app.db.schema import ensure_schema
 from app.db.session import engine
@@ -28,6 +29,7 @@ app.include_router(daily_research_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
 app.include_router(dashboard_page_router)
 app.include_router(screener_router)
+app.include_router(ta_screener_router)
 app.include_router(technicals_router)
 app.include_router(ibkr_router, prefix="/api")
 app.include_router(paper_trading_router, prefix="/api")
