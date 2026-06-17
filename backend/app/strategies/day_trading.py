@@ -59,7 +59,7 @@ def score_day_trade_setup(ticker, features, catalyst, market_context, actionable
     strategy_segment = _strategy_segment(strategy, catalyst)
     research_tags = _apply_segment_policy(strategy, catalyst, market_context, reject_reasons, warnings)
     research_evidence = _research_evidence(strategy, catalyst, market_context)
-    setup_score = _calculate_score(features, catalyst, market_context, strategy)
+    setup_score = _calculate_score(features, catalyst, market_context, strategy, ticker)
     status = _status(setup_score, reject_reasons, warnings, actionable_score_threshold, research_evidence)
 
     return {
@@ -129,7 +129,7 @@ def _research_evidence(strategy, catalyst, market_context):
     return RESEARCH_SUPPORTED_MARKET_CONTEXT_SEGMENTS.get((strategy, catalyst_type, risk_context))
 
 
-def _calculate_score(features, catalyst, market_context, strategy):
+def _calculate_score(features, catalyst, market_context, strategy, ticker=None):
     score = 0
     score += min(catalyst.get("score", 0), 35)
     score += min((features.get("gap_percent") or 0) * 2, 15)
@@ -148,6 +148,13 @@ def _calculate_score(features, catalyst, market_context, strategy):
             score += 5
         elif direction == "bearish":
             score -= 5
+    sector = _sector(ticker)
+    if sector == "utilities":
+        score += 5
+    elif sector == "energy":
+        score += 3
+    elif sector == "unknown":
+        score -= 3
     return max(0, min(round(score), 100))
 
 

@@ -35,8 +35,8 @@ _SECTOR_MAP = {
     "DRI": "consumer_cyclical", "YUM": "consumer_cyclical", "RCL": "consumer_cyclical",
     "CCL": "consumer_cyclical", "NCLH": "consumer_cyclical", "MAR": "consumer_cyclical",
     "HLT": "consumer_cyclical", "BKNG": "consumer_cyclical", "ABNB": "consumer_cyclical",
-    "AMZN": "consumer_cyclical",  # AMZN is in both tech and consumer
-    "TGT": "consumer_cyclical", "WMT": "consumer_staples",  # WMT is staples
+    # AMZN is in both tech and consumer,
+    "TGT": "consumer_cyclical", "WMT": "consumer_staples", # WMT is staples,
     "COST": "consumer_cyclical", "LULU": "consumer_cyclical",
     "DECK": "consumer_cyclical", "TPR": "consumer_cyclical",
     "BBY": "consumer_cyclical", "ROST": "consumer_cyclical",
@@ -44,7 +44,7 @@ _SECTOR_MAP = {
 
     # Consumer Staples
     "PG": "consumer_staples", "KO": "consumer_staples", "PEP": "consumer_staples",
-    "COST": "consumer_staples", "EL": "consumer_staples",
+    "EL": "consumer_staples",
     "CL": "consumer_staples", "KMB": "consumer_staples", "KHC": "consumer_staples",
     "CAG": "consumer_staples", "SJM": "consumer_staples", "CPB": "consumer_staples",
     "GIS": "consumer_staples", "MDLZ": "consumer_staples", "MNST": "consumer_staples",
@@ -91,7 +91,7 @@ _SECTOR_MAP = {
     "ARE": "real_estate", "BXP": "real_estate",
 
     # Communication Services
-    "META": "communication", "GOOGL": "communication", "NFLX": "communication",
+    "NFLX": "communication",
     "DIS": "communication", "CMCSA": "communication", "T": "communication",
     "TMUS": "communication", "VZ": "communication", "CHTR": "communication",
     "LYV": "communication", "TTWO": "communication", "EA": "communication",
@@ -99,10 +99,10 @@ _SECTOR_MAP = {
     "SNAP": "communication", "PINS": "communication", "TWTR": "communication",
 
     # Mid/Small cap liquidity additions
-    "PAX": "technology",  # PAX Labs is tech/Fintech
-    "THIN": "unknown",  # Test ticker
-    "CHEAP": "unknown",  # Test ticker
-    "FAIL": "unknown",  # Test ticker
+    "PAX": "technology", # PAX Labs is tech/Fintech,
+    "THIN": "unknown", # Test ticker,
+    "CHEAP": "unknown", # Test ticker,
+    "FAIL": "unknown", # Test ticker,
 
     # More liquid research tickers
     "AA": "materials", "ACGL": "financials", "AFL": "financials",
@@ -221,7 +221,7 @@ _SECTOR_MAP = {
     "PAYC": "technology", "PAYX": "technology", "PFG": "financials", "PGR": "financials",
     "PH": "industrials", "PHM": "consumer_cyclical", "PM": "consumer_staples", "PNR": "industrials", "POOL": "consumer_cyclical", "PRU": "financials",
     "PTC": "technology", "PWR": "industrials",
-    "PYPL": "financials", "REG": "real_estate",
+    "REG": "real_estate",
     "RGA": "financials", "RGLD": "materials",
     "RHI": "industrials", "RIVN": "consumer_cyclical",
     "RL": "consumer_cyclical", "RLI": "financials",
@@ -271,7 +271,7 @@ _SECTOR_MAP = {
     "ARKK": "etf", "TLT": "etf", "IEF": "etf", "HYG": "etf",
     "LQD": "etf", "GDX": "etf", "GDXJ": "etf",
     "USO": "etf", "UNG": "etf", "SLV": "etf", "GLD": "etf",
-    "EWJ": "etf", "EWZ": "etf", "FXI": "etf",
+    "EWJ": "etf", "EWZ": "etf",
     "EEM": "etf", "VWO": "etf", "VNQ": "etf",
 
     # Missing liquid research stocks

@@ -32,7 +32,7 @@ def classify_catalyst(catalyst):
         "catalyst_type": catalyst_type,
         "signal": catalyst.get("signal") or signal,
         "strength": catalyst.get("strength") or strength,
-        "score": score,
+        "score": catalyst.get("score") or score,
     }
 
 

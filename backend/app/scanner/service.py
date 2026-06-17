@@ -75,12 +75,12 @@ def build_features(snapshot, daily_candles, intraday_candles):
     opening_range = calculate_opening_range(intraday_candles)
     prior_levels = calculate_prior_levels(daily_candles)
     chart_pattern = {"pattern": "none", "direction": "neutral", "strength": "none"}
-    if intraday_candles:
+    if len(intraday_candles) >= 2:
+        multi = classify_multi_candle_pattern(intraday_candles[-2], intraday_candles[-1])
+        if multi["pattern"] != "none":
+            chart_pattern = multi
+    if chart_pattern["pattern"] == "none" and intraday_candles:
         chart_pattern = classify_candle_pattern(intraday_candles[-1])
-        if len(intraday_candles) >= 2 and chart_pattern["pattern"] == "none":
-            multi = classify_multi_candle_pattern(intraday_candles[-2], intraday_candles[-1])
-            if multi["pattern"] != "none":
-                chart_pattern = multi
 
     return {
         "price": current_price,

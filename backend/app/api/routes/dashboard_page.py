@@ -147,11 +147,13 @@ function renderGate(data) {
   const pg = data.promotion_gate || {};
   const st = pg.promotion_status || 'no_data';
   const cls = st === 'candidate_for_backtest_confirmation' ? 'chip-green' : st === 'needs_more_data' ? 'chip-yellow' : 'chip-red';
+  const cautionEvidence = data.phase_3_readiness_status === 'needs_loss_driver_diagnostics' && data.diagnostics_summary && data.diagnostics_summary.evidence_backed_expectancy_r !== null;
   card.innerHTML = `<h2>🚦 Promotion Gate</h2>
     <div class="row"><span class="label">Status</span><span class="value chip ${cls}">${pg.promotion_status || 'no_data'}</span></div>
     <div class="row"><span class="label">Reason</span><span class="value">${pg.reason || '-'}</span></div>
     <div class="row"><span class="label">Orders</span><span class="value ok">false</span></div>
     <div class="row"><span class="label">Backtest req.</span><span class="value">${pg.requires_backtest_confirmation ? 'true' : 'false'}</span></div>
+    ${cautionEvidence ? `<div class="row"><span class="label chip chip-yellow">⚠️ Caution+Evidence</span><span class="value" style="font-size:11px;color:#8899bb">Evidence-backed exists but under baseline. Diagnostics needed before scaling.</span></div>` : ''}
   `;
 }
 
