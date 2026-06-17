@@ -121,6 +121,13 @@ def _calculate_score(features, catalyst, market_context, strategy):
         score -= 10
     if strategy == "opening_range_breakout":
         score += 31
+    chart_pattern = features.get("chart_pattern")
+    if chart_pattern:
+        direction = chart_pattern.get("direction")
+        if direction == "bullish":
+            score += 5
+        elif direction == "bearish":
+            score -= 5
     return max(0, min(round(score), 100))
 
 
