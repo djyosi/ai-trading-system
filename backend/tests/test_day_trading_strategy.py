@@ -148,12 +148,13 @@ def test_contract_win_vwap_reclaim_is_tagged_as_research_supported_segment():
             "vwap": 211,
         },
         catalyst={"signal": "bullish", "score": 65, "catalyst_type": "contract_win"},
-        market_context={"risk_context": "supportive"},
+        market_context={"risk_context": "risk_off"},
     )
 
     assert result["strategy"] == "vwap_hold_reclaim"
     assert result["strategy_segment"] == "vwap_hold_reclaim|contract_win"
-    assert result["status"] == "active_watch"
+    assert result["status"] == "caution"
+    assert "market_context_risk_off" in result["warnings"]
     assert result["research_tags"] == ["segment_edge_candidate", "market_context_edge_candidate"]
 
 
@@ -170,16 +171,16 @@ def test_contract_win_vwap_reclaim_exposes_market_context_research_evidence():
             "vwap": 211,
         },
         catalyst={"signal": "bullish", "score": 65, "catalyst_type": "contract_win"},
-        market_context={"risk_context": "supportive"},
+        market_context={"risk_context": "risk_off"},
     )
 
     assert "market_context_edge_candidate" in result["research_tags"]
     assert result["research_evidence"] == {
-        "market_context_segment": "vwap_hold_reclaim|contract_win|supportive",
-        "recommended_threshold": 60,
-        "trade_count": 74,
-        "win_rate": 0.45,
-        "expectancy_r": 0.11,
+        "market_context_segment": "vwap_hold_reclaim|contract_win|risk_off",
+        "recommended_threshold": 50,
+        "trade_count": 13,
+        "win_rate": 0.69,
+        "expectancy_r": 0.73,
     }
 
 
@@ -205,10 +206,10 @@ def test_analyst_upgrade_gap_and_go_exposes_market_context_research_evidence():
     assert "market_context_edge_candidate" in result["research_tags"]
     assert result["research_evidence"] == {
         "market_context_segment": "catalyst_momentum_gap_and_go|analyst_upgrade|supportive",
-        "recommended_threshold": 60,
-        "trade_count": 38,
-        "win_rate": 0.45,
-        "expectancy_r": 0.12,
+        "recommended_threshold": 85,
+        "trade_count": 5,
+        "win_rate": 0.60,
+        "expectancy_r": 0.50,
     }
 
 

@@ -133,16 +133,16 @@ def test_recommendation_exposes_research_evidence_for_context_supported_segment(
             "vwap": 211,
         },
         catalyst={"signal": "bullish", "score": 65, "catalyst_type": "contract_win"},
-        market_context={"risk_context": "supportive"},
+        market_context={"risk_context": "risk_off"},
     )
 
     assert "market_context_edge_candidate" in recommendation["research_tags"]
     assert recommendation["research_evidence"] == {
-        "market_context_segment": "vwap_hold_reclaim|contract_win|supportive",
-        "recommended_threshold": 60,
-        "trade_count": 74,
-        "win_rate": 0.45,
-        "expectancy_r": 0.11,
+        "market_context_segment": "vwap_hold_reclaim|contract_win|risk_off",
+        "recommended_threshold": 50,
+        "trade_count": 13,
+        "win_rate": 0.69,
+        "expectancy_r": 0.73,
     }
 
 

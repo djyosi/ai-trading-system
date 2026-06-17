@@ -1,31 +1,42 @@
+from app.features.sectors import get_sector
+
 MIN_PRICE = 5
 MIN_LIQUIDITY_SCORE = 60
 MAX_SPREAD_PERCENT = 0.75
 RESEARCH_SUPPORTED_SEGMENTS = {
     ("vwap_hold_reclaim", "contract_win"),
+    ("vwap_hold_reclaim", "fda_approval"),
+    ("vwap_hold_reclaim", "investigation"),
     ("catalyst_momentum_gap_and_go", "analyst_upgrade"),
 }
 RESEARCH_SUPPORTED_MARKET_CONTEXT_SEGMENTS = {
-    ("vwap_hold_reclaim", "contract_win", "mixed"): {
-        "market_context_segment": "vwap_hold_reclaim|contract_win|mixed",
-        "recommended_threshold": 60,
-        "trade_count": 25,
-        "win_rate": 0.52,
-        "expectancy_r": 0.30,
+    ("vwap_hold_reclaim", "contract_win", "risk_off"): {
+        "market_context_segment": "vwap_hold_reclaim|contract_win|risk_off",
+        "recommended_threshold": 50,
+        "trade_count": 13,
+        "win_rate": 0.69,
+        "expectancy_r": 0.73,
     },
-    ("vwap_hold_reclaim", "contract_win", "supportive"): {
-        "market_context_segment": "vwap_hold_reclaim|contract_win|supportive",
+    ("vwap_hold_reclaim", "fda_approval", "mixed"): {
+        "market_context_segment": "vwap_hold_reclaim|fda_approval|mixed",
         "recommended_threshold": 60,
-        "trade_count": 74,
-        "win_rate": 0.45,
-        "expectancy_r": 0.11,
+        "trade_count": 7,
+        "win_rate": 0.57,
+        "expectancy_r": 0.43,
+    },
+    ("vwap_hold_reclaim", "investigation", "mixed"): {
+        "market_context_segment": "vwap_hold_reclaim|investigation|mixed",
+        "recommended_threshold": 30,
+        "trade_count": 7,
+        "win_rate": 0.71,
+        "expectancy_r": 0.79,
     },
     ("catalyst_momentum_gap_and_go", "analyst_upgrade", "supportive"): {
         "market_context_segment": "catalyst_momentum_gap_and_go|analyst_upgrade|supportive",
-        "recommended_threshold": 60,
-        "trade_count": 38,
-        "win_rate": 0.45,
-        "expectancy_r": 0.12,
+        "recommended_threshold": 85,
+        "trade_count": 5,
+        "win_rate": 0.60,
+        "expectancy_r": 0.50,
     },
 }
 
@@ -45,6 +56,7 @@ def score_day_trade_setup(ticker, features, catalyst, market_context, actionable
 
     return {
         "ticker": ticker,
+        "sector": _sector(ticker),
         "strategy": strategy,
         "strategy_segment": strategy_segment,
         "research_tags": research_tags,
@@ -139,6 +151,10 @@ def _status(setup_score, reject_reasons, warnings, actionable_score_threshold=70
     if setup_score >= actionable_score_threshold:
         return "active_watch"
     return "no_trade"
+
+
+def _sector(ticker):
+    return get_sector(ticker)
 
 
 def _confidence(setup_score):
