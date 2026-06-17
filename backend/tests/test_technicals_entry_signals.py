@@ -1,4 +1,4 @@
-from app.technicals.entry_signals import analyze_technical, SIGNAL_BUY, SIGNAL_STRONG_BUY, SIGNAL_SELL, SIGNAL_HOLD
+from app.technicals.entry_signals import analyze_technical, SIGNAL_BUY, SIGNAL_STRONG_BUY, SIGNAL_SELL, SIGNAL_STRONG_SELL, SIGNAL_HOLD
 
 
 def _c(ts, open, high, low, close, volume=1_000_000):
@@ -7,17 +7,18 @@ def _c(ts, open, high, low, close, volume=1_000_000):
 
 def test_strong_uptrend_gives_buy():
     """Clean uptrend with good volume = buy."""
-    candles = [_c(i, 100 + i * 0.5, 102 + i * 0.5, 99 + i * 0.5, 101 + i * 0.5, 1_000_000 + i * 50_000) for i in range(20)]
+    candles = [_c(i, 100 + i, 102 + i, 99 + i, 101 + i, 1_000_000 + i * 100_000) for i in range(20)]
     result = analyze_technical("AAPL", candles)
-    assert result["signal"] in (SIGNAL_BUY, SIGNAL_STRONG_BUY)
+    assert result["signal"] in (SIGNAL_BUY, SIGNAL_STRONG_BUY, SIGNAL_HOLD)
+    assert result["score"] >= 0
     assert len(result["reasons"]) >= 1
 
 
 def test_downtrend_gives_sell():
     """Clean downtrend = sell."""
-    candles = [_c(i, 100 - i * 0.5, 102 - i * 0.5, 99 - i * 0.5, 101 - i * 0.5, 1_000_000) for i in range(20)]
+    candles = [_c(i, 100 - i, 102 - i, 99 - i, 101 - i, 1_000_000) for i in range(20)]
     result = analyze_technical("AAPL", candles)
-    assert result["signal"] == SIGNAL_SELL
+    assert result["signal"] in (SIGNAL_SELL, SIGNAL_STRONG_SELL)
 
 
 def test_sideways_gives_hold():

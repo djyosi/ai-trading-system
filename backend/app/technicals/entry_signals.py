@@ -1,4 +1,5 @@
 from app.features.chart_patterns import classify_candle_pattern, classify_multi_candle_pattern
+from app.technicals.advanced_patterns import analyze_advanced_patterns
 from app.technicals.support_resistance import support_resistance
 from app.technicals.channels import detect_channel, CHANNEL_UP, CHANNEL_DOWN
 from app.technicals.volume import volume_trend, volume_divergence, TREND_SPIKE, DIVERGENCE_BULLISH, DIVERGENCE_BEARISH
@@ -30,6 +31,8 @@ def analyze_technical(ticker, candles):
     last_candle = candles[-1]
     pattern = classify_candle_pattern(last_candle)
     multi_pattern = classify_multi_candle_pattern(candles[-2], candles[-1]) if len(candles) >= 2 else {}
+    adv_patterns = analyze_advanced_patterns(candles)
+    best_adv = next((r["result"] for r in adv_patterns if r.get("detected") and r["pattern"] == "best_advanced"), {})
 
     reasons = []
     score = 0  # positive = bullish, negative = bearish
@@ -72,6 +75,15 @@ def analyze_technical(ticker, candles):
     elif divergence == DIVERGENCE_BEARISH:
         score -= 2
         reasons.append("bearish_divergence")
+
+    # Advanced patterns (double top/bottom, H&S, flags)
+    if best_adv.get("detected"):
+        if best_adv.get("direction") == "bullish":
+            score += 2
+            reasons.append(f"{best_adv.get('pattern')}")
+        elif best_adv.get("direction") == "bearish":
+            score -= 2
+            reasons.append(f"{best_adv.get('pattern')}")
 
     # Candle patterns
     pat = pattern if pattern["pattern"] != "none" else multi_pattern
