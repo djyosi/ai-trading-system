@@ -5,6 +5,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from app.backtesting.paper_validation_research import PHASE_3_DEFAULT_UNIVERSE_PRESET, run_paper_validation_research
+from app.jobs.daily_research_policy import evaluate_promotion_gate
 from app.universe.presets import resolve_universe_preset
 
 
@@ -83,6 +84,7 @@ async def run_daily_research(
     report["orders_enabled"] = False
     report["next_step"] = _daily_live_next_step(report)
     report["diagnostics_summary"] = _diagnostics_summary(report)
+    report["promotion_gate"] = evaluate_promotion_gate(report["diagnostics_summary"])
     return report
 
 

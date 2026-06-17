@@ -190,3 +190,8 @@ async def test_run_daily_research_live_mode_includes_diagnostics_summary():
     assert "next_research_actions" in ds
     assert "warnings" in ds
     assert "items" not in json.dumps(ds)
+    assert "promotion_gate" in report
+    pg = report["promotion_gate"]
+    assert pg["promotion_status"] in ("blocked", "needs_more_data", "candidate_for_backtest_confirmation")
+    assert pg["orders_enabled"] is False
+    assert pg["requires_backtest_confirmation"] is True
