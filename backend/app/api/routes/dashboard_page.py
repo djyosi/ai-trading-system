@@ -67,6 +67,17 @@ _DASHBOARD_HTML = """\
   <div class="card full" id="segments-card"><h2>🏆 Best Setups (with evidence)</h2><div class="loading">Loading...</div></div>
 </div>
 
+<div class="grid">
+  <div class="card full" id="ta-card">
+    <h2>🔬 Technical Analysis</h2>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input id="ta-ticker" type="text" placeholder="Enter ticker (e.g. AAPL)" style="flex:1;background:#1e293b;border:1px solid #334155;color:#e0e6f0;padding:8px 12px;border-radius:6px;font-size:14px">
+      <button onclick="runTA()" style="background:#2563eb;border:none;color:#fff;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:14px">Analyze</button>
+    </div>
+    <div id="ta-result"><div class="empty">Enter a ticker and click Analyze</div></div>
+  </div>
+</div>
+
 <script>
 async function load() {
   try {
@@ -207,6 +218,40 @@ function renderEmpty(d) {
 
 load();
 setInterval(load, 60000);
+
+async function runTA() {
+  const ticker = document.getElementById('ta-ticker').value.trim().toUpperCase();
+  const resultDiv = document.getElementById('ta-result');
+  if (!ticker) { resultDiv.innerHTML = '<div class="empty">Please enter a ticker</div>'; return; }
+  resultDiv.innerHTML = '<div class="loading">Analyzing ' + ticker + '...</div>';
+  try {
+    const res = await fetch('/api/technicals/' + ticker);
+    const d = await res.json();
+    const sig = d.signal || 'hold';
+    const sigCls = sig.includes('buy') ? 'green' : sig.includes('sell') ? 'red' : 'gray';
+    const sup = (d.support_levels || []).slice(0, 3);
+    const resL = (d.resistance_levels || []).slice(0, 3);
+    const ch = d.channel || {};
+    resultDiv.innerHTML =
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+        '<div><div class="row"><span class="lbl">Signal</span><span class="val ' + sigCls + '" style="font-size:16px;font-weight:700">' + sig.toUpperCase() + '</span></div>' +
+        '<div class="row"><span class="lbl">Score</span><span class="val ' + sigCls + '">' + (d.score || 0) + '</span></div>' +
+        '<div class="row"><span class="lbl">Price</span><span class="val">$' + (d.current_price || 0).toFixed(2) + '</span></div>' +
+        '<div class="row"><span class="lbl">Channel</span><span class="val">' + (ch.type || '-') + ' (' + (ch.slope || 0) + ')</span></div>' +
+        '<div class="row"><span class="lbl">Volume</span><span class="val">' + (d.volume_trend || '-') + '</span></div>' +
+        '<div class="row"><span class="lbl">Divergence</span><span class="val">' + (d.volume_divergence || 'none') + '</span></div>' +
+        '</div>' +
+        '<div><div style="font-size:11px;color:#6b7a99;margin-bottom:4px">Supports</div>' +
+        sup.map(s => '<div class="row"><span class="lbl">$' + s.level.toFixed(2) + '</span><span class="val gray">' + s.strength + ' (' + s.touches + 'x)</span></div>').join('') +
+        '<div style="font-size:11px;color:#6b7a99;margin:8px 0 4px">Resistances</div>' +
+        resL.map(r => '<div class="row"><span class="lbl">$' + r.level.toFixed(2) + '</span><span class="val gray">' + r.strength + ' (' + r.touches + 'x)</span></div>').join('') +
+        '</div>' +
+      '</div>' +
+      '<div style="margin-top:8px;font-size:11px;color:#6b7a99">Pattern: ' + (d.candle_pattern?.pattern || 'none') + ' • Reasons: ' + (d.reasons || []).join(', ') + '</div>';
+  } catch(e) {
+    resultDiv.innerHTML = '<div class="empty">❌ Error: ' + e.message + '</div>';
+  }
+}
 </script>
 </body>
 </html>"""
