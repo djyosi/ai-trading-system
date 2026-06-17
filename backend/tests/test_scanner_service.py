@@ -37,27 +37,27 @@ class FakeMarketDataProvider:
         self.daily_calls.append({"ticker": ticker, "start": start, "end": end})
         if ticker == "THIN":
             return [
-                {"high": 3.3, "low": 3.0, "close": 3.1, "volume": 20_000},
-                {"high": 3.4, "low": 3.1, "close": 3.2, "volume": 18_000},
-                {"high": 3.3, "low": 3.0, "close": 3.2, "volume": 19_000},
+                {"open": 3.1, "high": 3.3, "low": 3.0, "close": 3.1, "volume": 20_000},
+                {"open": 3.15, "high": 3.4, "low": 3.1, "close": 3.2, "volume": 18_000},
+                {"open": 3.2, "high": 3.3, "low": 3.0, "close": 3.2, "volume": 19_000},
             ]
         return [
-            {"high": 10.3, "low": 9.8, "close": 10.0, "volume": 900_000},
-            {"high": 10.8, "low": 10.1, "close": 10.6, "volume": 1_000_000},
-            {"high": 11.0, "low": 10.5, "close": 10.74, "volume": 1_000_000},
+            {"open": 9.9, "high": 10.3, "low": 9.8, "close": 10.0, "volume": 900_000},
+            {"open": 10.1, "high": 10.8, "low": 10.1, "close": 10.6, "volume": 1_000_000},
+            {"open": 10.6, "high": 11.0, "low": 10.5, "close": 10.74, "volume": 1_000_000},
         ]
 
     async def get_intraday_candles(self, ticker, start, end, timeframe="1m"):
         self.intraday_calls.append({"ticker": ticker, "start": start, "end": end, "timeframe": timeframe})
         if ticker == "THIN":
             return [
-                {"high": 3.2, "low": 3.1, "close": 3.15, "volume": 2_000},
-                {"high": 3.25, "low": 3.1, "close": 3.2, "volume": 2_100},
+                {"open": 3.1, "high": 3.2, "low": 3.1, "close": 3.15, "volume": 2_000},
+                {"open": 3.15, "high": 3.25, "low": 3.1, "close": 3.2, "volume": 2_100},
             ]
         return [
-            {"high": 11.45, "low": 11.10, "close": 11.30, "volume": 120_000},
-            {"high": 11.70, "low": 11.25, "close": 11.55, "volume": 180_000},
-            {"high": 11.85, "low": 11.40, "close": 11.60, "volume": 210_000},
+            {"open": 11.30, "high": 11.45, "low": 11.10, "close": 11.30, "volume": 120_000},
+            {"open": 11.30, "high": 11.70, "low": 11.25, "close": 11.55, "volume": 180_000},
+            {"open": 11.55, "high": 11.85, "low": 11.40, "close": 11.60, "volume": 210_000},
         ]
 
 

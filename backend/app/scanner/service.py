@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from app.catalysts.classifier import calculate_freshness, classify_catalyst
+from app.features.chart_patterns import classify_candle_pattern, classify_multi_candle_pattern
 from app.features.liquidity import (
     calculate_dollar_volume,
     calculate_liquidity_score,
@@ -73,6 +74,13 @@ def build_features(snapshot, daily_candles, intraday_candles):
     average_volume = _average_volume(daily_candles)
     opening_range = calculate_opening_range(intraday_candles)
     prior_levels = calculate_prior_levels(daily_candles)
+    chart_pattern = {"pattern": "none", "direction": "neutral", "strength": "none"}
+    if intraday_candles:
+        chart_pattern = classify_candle_pattern(intraday_candles[-1])
+        if len(intraday_candles) >= 2 and chart_pattern["pattern"] == "none":
+            multi = classify_multi_candle_pattern(intraday_candles[-2], intraday_candles[-1])
+            if multi["pattern"] != "none":
+                chart_pattern = multi
 
     return {
         "price": current_price,
@@ -95,6 +103,7 @@ def build_features(snapshot, daily_candles, intraday_candles):
         ),
         **opening_range,
         **prior_levels,
+        "chart_pattern": chart_pattern,
     }
 
 
