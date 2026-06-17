@@ -52,6 +52,8 @@ def latest_daily_research_status(output_dir=DEFAULT_OUTPUT_DIR):
     research = report.get("research_report", {})
     _copy_if_present(research, status, "segment_threshold_recommendations")
     _copy_if_present(research, status, "next_research_actions")
+    _copy_if_present(research, status, "top_symbols")
+    _copy_if_present(research, status, "weak_symbols")
     return status
 
 

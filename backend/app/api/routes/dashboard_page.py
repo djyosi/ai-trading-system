@@ -57,6 +57,13 @@ _DASHBOARD_HTML = """\
 </div>
 
 <div class="grid">
+  <div class="card" id="tickers-card"><h2>🏆 Best Tickers</h2><div class="loading">Loading...</div></div>
+  <div class="card" id="weak-tickers-card"><h2>📉 Weakest Tickers</h2><div class="loading">Loading...</div></div>
+  <div class="card" id="patterns-card"><h2>🕯️ Candle Patterns</h2><div class="loading">Loading...</div></div>
+  <div class="card" id="gate-card"><h2>🚦 Status</h2><div class="loading">Loading...</div></div>
+</div>
+
+<div class="grid">
   <div class="card full" id="segments-card"><h2>🏆 Best Setups (with evidence)</h2><div class="loading">Loading...</div></div>
 </div>
 
@@ -137,6 +144,49 @@ async function load() {
         '</table>';
     }
     document.getElementById('segments-card').innerHTML = '<h2>🏆 Best Setups (with evidence)</h2>' + (html || '<div class="empty">No segments with sufficient data</div>');
+
+    // Tickers
+    const top = (d.top_symbols || []).slice(0, 5);
+    document.getElementById('tickers-card').innerHTML = '<h2>🏆 Best Tickers</h2>' +
+      (!top.length ? '<div class="empty">None</div>' :
+      '<table><tr><th>Ticker</th><th>Trades</th><th>Exp R</th><th>Win</th></tr>' +
+      top.map(s => '<tr><td class="green">' + s.ticker + '</td><td>' + s.closed_total + '</td><td class="green">' + fmtR(s.expectancy_r) + '</td><td>' + fmtPct(s.win_rate) + '</td></tr>').join('') + '</table>');
+
+    const weak = (d.weak_symbols || []).slice(0, 5);
+    document.getElementById('weak-tickers-card').innerHTML = '<h2>📉 Weakest Tickers</h2>' +
+      (!weak.length ? '<div class="empty">None</div>' :
+      '<table><tr><th>Ticker</th><th>Trades</th><th>Exp R</th><th>Win</th></tr>' +
+      weak.map(s => '<tr><td class="red">' + s.ticker + '</td><td>' + s.closed_total + '</td><td class="red">' + fmtR(s.expectancy_r) + '</td><td>' + fmtPct(s.win_rate) + '</td></tr>').join('') + '</table>');
+
+    // Patterns
+    const results = d.results || {};
+    const hasItems = Object.keys(results).length > 0;
+    let patternCounts = {};
+    if (hasItems) {
+      for (const t in results) {
+        for (const item of (results[t].items || [])) {
+          const cp = (item.recommendation || {}).chart_pattern;
+          if (cp && cp.pattern && cp.pattern !== 'none') {
+            const key = cp.direction + ' ' + cp.pattern;
+            patternCounts[key] = (patternCounts[key] || 0) + 1;
+          }
+        }
+      }
+    }
+    const patterns = Object.entries(patternCounts).sort((a,b) => b[1]-a[1]).slice(0, 6);
+    document.getElementById('patterns-card').innerHTML = '<h2>🕯️ Candle Patterns</h2>' +
+      (!hasItems ? '<div class="empty">Pattern data available in full artifact only</div>' :
+      !patterns.length ? '<div class="empty">No patterns detected</div>' :
+      patterns.map(p => row(p[0], p[1] + 'x', p[0].startsWith('bullish') ? 'green' : p[0].startsWith('bearish') ? 'red' : '')).join(''));
+
+    // Gate
+    const pgStatus = pg.promotion_status || 'no_data';
+    const pgCls = pgStatus === 'candidate_for_backtest_confirmation' ? 'green' : pgStatus === 'needs_more_data' ? 'yellow' : 'red';
+    document.getElementById('gate-card').innerHTML = '<h2>🚦 Status</h2>' +
+      row('Promotion', '<span class="' + pgCls + '">' + (pgStatus || '-') + '</span>') +
+      row('Reason', pg.reason || '-') +
+      row('Orders enabled', '<span class="green">false</span>') +
+      row('Backtest req.', pg.requires_backtest_confirmation ? 'true' : 'false');
 
   } catch(e) {
     document.getElementById('banner').innerHTML = '<span style="font-size:20px">❌</span> Failed to load: ' + e.message;
