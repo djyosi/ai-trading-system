@@ -161,3 +161,32 @@ async def test_run_daily_research_live_mode_returns_sanitized_paper_safe_summary
     assert "raw_payload" not in json.dumps(report)
     assert provider.candle_calls == [{"ticker": "AAPL", "start": "2026-01-02", "end": "2026-03-31"}]
     assert provider.news_calls == [{"ticker": "AAPL", "start": "2026-01-02", "end": "2026-03-31"}]
+
+
+@pytest.mark.asyncio
+async def test_run_daily_research_live_mode_includes_diagnostics_summary():
+    provider = FakeDailyProvider()
+
+    report = await run_daily_research(
+        mode="live",
+        market_data_provider=provider,
+        confirm_live_data=True,
+        run_date="2026-06-16",
+        start="2026-01-02",
+        end="2026-03-31",
+        tickers=["AAPL"],
+        universe_preset=None,
+        include_news_catalysts=True,
+        lookback_bars=3,
+        horizon_bars=1,
+        min_trades=1,
+    )
+
+    assert "diagnostics_summary" in report
+    ds = report["diagnostics_summary"]
+    assert "phase_3_readiness_status" in ds
+    assert "evidence_vs_baseline_delta_r" in ds
+    assert "worst_loss_drivers" in ds
+    assert "next_research_actions" in ds
+    assert "warnings" in ds
+    assert "items" not in json.dumps(ds)

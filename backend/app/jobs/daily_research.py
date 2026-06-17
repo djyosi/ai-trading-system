@@ -82,7 +82,33 @@ async def run_daily_research(
     report["live_data_enabled"] = True
     report["orders_enabled"] = False
     report["next_step"] = _daily_live_next_step(report)
+    report["diagnostics_summary"] = _diagnostics_summary(report)
     return report
+
+
+def _diagnostics_summary(report):
+    research = report.get("research_report", {})
+    readiness = research.get("phase_3_readiness", {})
+    loss_diagnostics = research.get("phase_3_loss_diagnostics", {})
+    return {
+        "phase_3_readiness_status": readiness.get("status"),
+        "phase_3_next_step": readiness.get("next_step"),
+        "evidence_vs_baseline_delta_r": readiness.get("evidence_vs_baseline_delta_r"),
+        "evidence_backed_expectancy_r": readiness.get("evidence_backed_expectancy_r"),
+        "baseline_expectancy_r": readiness.get("baseline_expectancy_r"),
+        "worst_loss_drivers": _worst_loss_driver_summary(loss_diagnostics, top_n=3),
+        "next_research_actions": research.get("next_research_actions", []),
+        "warnings": research.get("warnings", []),
+    }
+
+
+def _worst_loss_driver_summary(loss_diagnostics, top_n):
+    worst = []
+    for dimension, segments in (loss_diagnostics.get("evidence_backed_loss_drivers") or {}).items():
+        worst_segment = segments[0] if segments else None
+        if worst_segment:
+            worst.append({"dimension": dimension, **worst_segment})
+    return sorted(worst, key=lambda r: (r.get("expectancy_r") or 0, r.get("segment", "")))[:top_n]
 
 
 def build_daily_research_preflight(
@@ -193,7 +219,7 @@ def _markdown_live_report(report):
             f"evaluated_bars_total: {report['evaluated_bars_total']}",
             f"news_catalysts_fetched: {report['news_catalysts_fetched']}",
             f"market_context_source: {report['market_context_source']}",
-            f"paper_closed_count: {paper_summary.get('closed_count', 0)}",
+            f"paper_closed_count: {paper_summary.get('closed_total', 0)}",
             f"paper_expectancy_r: {paper_summary.get('expectancy_r')}",
             f"phase_3_readiness_status: {readiness.get('status')}",
             f"next_step: {report['next_step']}",
