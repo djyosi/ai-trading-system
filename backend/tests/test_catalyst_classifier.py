@@ -22,11 +22,51 @@ def test_classify_insider_option_related_sale_is_neutral_weak():
 
 def test_classify_known_news_catalysts():
     assert classify_catalyst({"catalyst_type": "earnings_beat"})["score"] == 75
+    assert classify_catalyst({"catalyst_type": "earnings_miss"})["score"] == 25
     assert classify_catalyst({"catalyst_type": "guidance_raise"})["score"] == 85
-    assert classify_catalyst({"catalyst_type": "analyst_upgrade"})["score"] == 60
+    assert classify_catalyst({"catalyst_type": "product_launch"})["score"] == 55
+    assert classify_catalyst({"catalyst_type": "investigation"})["score"] == 30
+    assert classify_catalyst({"catalyst_type": "partnership"})["score"] == 60
+    assert classify_catalyst({"catalyst_type": "buyback"})["score"] == 65
+    assert classify_catalyst({"catalyst_type": "dividend"})["score"] == 45
+    assert classify_catalyst({"catalyst_type": "credit_rating"})["score"] == 50
+    assert classify_catalyst({"catalyst_type": "analyst_initiation"})["score"] == 45
+    assert classify_catalyst({"catalyst_type": "analyst_upgrade"})["score"] == 40
     assert classify_catalyst({"catalyst_type": "fda_approval"})["score"] == 90
     assert classify_catalyst({"catalyst_type": "merger_acquisition"})["score"] == 80
     assert classify_catalyst({"catalyst_type": "guidance_cut"})["signal"] == "bearish"
+
+
+def test_investigation_is_bearish():
+    result = classify_catalyst({"catalyst_type": "investigation"})
+
+    assert result["signal"] == "bearish"
+    assert result["score"] == 30
+
+
+def test_earnings_miss_is_bearish():
+    result = classify_catalyst({"catalyst_type": "earnings_miss"})
+
+    assert result["signal"] == "bearish"
+
+
+def test_partnership_is_bullish():
+    result = classify_catalyst({"catalyst_type": "partnership"})
+
+    assert result["signal"] == "bullish"
+    assert result["score"] == 60
+
+
+def test_buyback_is_bullish():
+    result = classify_catalyst({"catalyst_type": "buyback"})
+
+    assert result["signal"] == "bullish"
+
+
+def test_analyst_upgrade_score_reduced_to_40():
+    result = classify_catalyst({"catalyst_type": "analyst_upgrade"})
+
+    assert result["score"] == 40
 
 
 def test_unknown_catalyst_is_neutral_low_score():
