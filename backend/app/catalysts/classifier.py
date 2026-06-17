@@ -14,6 +14,7 @@ CATALYST_RULES = {
     "fda_approval": ("bullish", "strong", 90),
     "fda_clinical": ("bullish", "medium", 70),
     "merger_acquisition": ("bullish", "strong", 80),
+    "m_and_a": ("bullish", "strong", 80),
     "contract_win": ("bullish", "medium", 65),
     "product_launch": ("bullish", "weak", 55),
     "partnership": ("bullish", "weak", 60),

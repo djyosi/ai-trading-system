@@ -144,6 +144,8 @@ class MassiveProvider(MarketDataProvider):
             return "guidance_raise"
         if "cuts guidance" in text or "guidance cut" in text:
             return "guidance_cut"
+        if "credit rating" in text or "rating agency" in text or ("moody" in text and "rating" in text):
+            return "credit_rating"
         if "upgrade" in text:
             return "analyst_upgrade"
         if "downgrade" in text:
@@ -152,10 +154,22 @@ class MassiveProvider(MarketDataProvider):
             return "fda_approval"
         if "contract" in text and ("win" in text or "award" in text):
             return "contract_win"
+        if "partnership" in text or "strategic alliance" in text or "collaborat" in text:
+            return "partnership"
+        if "buyback" in text or "repurchase" in text:
+            return "buyback"
+        if "dividend" in text and ("increase" in text or "raise" in text or "special" in text or "declare" in text):
+            return "dividend"
         if "launch" in text or "unveils" in text or "introduces" in text:
             return "product_launch"
         if "acquire" in text or "acquisition" in text or "merger" in text or "buyout" in text:
             return "m_and_a"
+        if "clinical trial" in text or "phase 1" in text or "phase 2" in text or "phase 3" in text:
+            return "fda_clinical"
+        if "initiat" in text and ("coverage" in text or "rating" in text):
+            return "analyst_initiation"
+        if "credit rating" in text or "rating agency" in text or ("moody" in text and "rating" in text):
+            return "credit_rating"
         if "investigation" in text or "lawsuit" in text or "sues " in text or "sec probe" in text:
             return "investigation"
         return classify_catalyst({})["catalyst_type"]

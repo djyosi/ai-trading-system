@@ -118,6 +118,13 @@ def test_massive_news_catalyst_type_inference_covers_common_research_catalysts()
         ("Tesla misses earnings estimates", "Quarterly profit missed expectations", "earnings_miss"),
         ("Justice Department opens investigation into Alphabet", None, "investigation"),
         ("Pfizer wins FDA clearance for new treatment", None, "fda_approval"),
+        ("Exxon forms strategic partnership with lithium startup", None, "partnership"),
+        ("Apple announces $110 billion share buyback program", None, "buyback"),
+        ("Microsoft raises dividend by 10%", None, "dividend"),
+        ("Moderna begins phase 3 clinical trial for RSV vaccine", None, "fda_clinical"),
+        ("Goldman Sachs initiates coverage of Rivian with buy rating", None, "analyst_initiation"),
+        ("Moody's upgrades Apple credit rating to AAA", None, "credit_rating"),
+        ("Company announces special dividend of $2 per share", None, "dividend"),
     ]
 
     for headline, description, expected in cases:
