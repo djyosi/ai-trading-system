@@ -9,7 +9,7 @@ OUTPUT_DIR="$REPO_ROOT/runtime/daily-research"
 cd "$BACKEND_DIR"
 . .venv/bin/activate
 
-python -m app.jobs.daily_research \
+python3 -m app.jobs.daily_research \
   --universe-preset liquid_research_500 \
   --include-news-catalysts \
   --include-market-context \
