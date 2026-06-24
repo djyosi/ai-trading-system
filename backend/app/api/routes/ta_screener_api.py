@@ -5,6 +5,7 @@ import json
 from app.ta_screener.scanner import run_screen, SCREENS
 from app.ta_screener.daily_run import run_daily_scan
 from app.ta_screener.paper_trade import track_outcomes
+from app.ta_screener.portfolio import _load_trades, update_open_trades
 
 router = APIRouter(prefix="/api/screener/ta", tags=["ta-screener"])
 
@@ -62,6 +63,22 @@ async def paper_outcomes():
     """Track how yesterday's top recommendations performed today."""
     result = await track_outcomes()
     return result
+
+
+@router.get("/portfolio")
+async def portfolio():
+    """Get portfolio summary + all trades."""
+    trades_db = _load_trades()
+    from app.ta_screener.portfolio import _portfolio_summary
+    summary = _portfolio_summary(trades_db["trades"])
+    return {"summary": summary, "trades": trades_db["trades"]}
+
+
+@router.post("/portfolio/update")
+async def update_portfolio():
+    """Check open trades and close winners/losers."""
+    summary = await update_open_trades()
+    return summary
 
 
 @router.get("/top")
