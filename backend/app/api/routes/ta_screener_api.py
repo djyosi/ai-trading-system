@@ -4,6 +4,7 @@ import json
 
 from app.ta_screener.scanner import run_screen, SCREENS
 from app.ta_screener.daily_run import run_daily_scan
+from app.ta_screener.paper_trade import track_outcomes
 
 router = APIRouter(prefix="/api/screener/ta", tags=["ta-screener"])
 
@@ -54,6 +55,13 @@ async def latest_scan():
         return {"status": "no_scans_yet", "message": "Run /api/screener/ta/scan to generate"}
     latest = json.loads(scans[-1].read_text())
     return latest
+
+
+@router.get("/outcomes")
+async def paper_outcomes():
+    """Track how yesterday's top recommendations performed today."""
+    result = await track_outcomes()
+    return result
 
 
 @router.get("/top")
