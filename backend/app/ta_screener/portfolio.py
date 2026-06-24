@@ -1,6 +1,7 @@
 """Portfolio tracker — paper trade recommendations and track P&L.
 
-Tracks: entry, stop, target, status (open/win/loss), R-multiple.
+Entry = last complete candle's close (yesterday).
+Stop/target check only on candles AFTER entry.
 """
 
 import json
@@ -14,7 +15,7 @@ from app.core.config import settings
 REPO_ROOT = Path(__file__).resolve().parents[3]
 TRADES_FILE = REPO_ROOT / "runtime" / "ta-trades" / "trades.json"
 
-STOP_ATR_MULTIPLE = 2.0
+STOP_ATR_MULTIPLE = 3.0       # was 2.0 — was too tight
 TARGET1_RISK_MULTIPLE = 1.5
 TARGET2_RISK_MULTIPLE = 2.6
 
@@ -48,8 +49,8 @@ def _entry_stop_target(close, atr_pct):
     }
 
 
-def add_trades_from_scan(scan_data):
-    """Add new open trades from a fresh scan's top recommendations."""
+def add_trades_from_scan(scan_data, candles_map=None):
+    """Add new open trades. Entry = last complete candle's close (not today's)."""
     trades_db = _load_trades()
     existing_tickers = {t["ticker"] for t in trades_db["trades"] if t["status"] == "open"}
     added = 0
@@ -62,13 +63,17 @@ def add_trades_from_scan(scan_data):
         pl = _entry_stop_target(close, 3.0)
         if pl is None:
             continue
+
+        # Entry timestamp: use yesterday's date if available
+        entry_date = scan_data["scan_date"]
+
         trade = {
             "id": trades_db["next_id"] + added,
             "ticker": ticker,
             "score": rec["score"],
             "screens": rec["screens"],
             "sector": rec.get("sector", ""),
-            "scan_date": scan_data["scan_date"],
+            "entry_date": entry_date,
             "status": "open",
             **pl,
         }
@@ -81,64 +86,74 @@ def add_trades_from_scan(scan_data):
 
 
 async def update_open_trades():
-    """Check open trades against latest prices. Close winners/losers."""
+    """Check open trades. Only checks candles AFTER entry date. No same-candle check."""
     trades_db = _load_trades()
     api_key = settings.massive_api_key
     if not api_key:
         return {"error": "no_api_key"}
 
-    updated = 0
     today = datetime.now(timezone.utc).date().isoformat()
 
     async with AsyncClient(base_url=settings.massive_base_url, timeout=30) as client:
         for trade in trades_db["trades"]:
             if trade["status"] != "open":
                 continue
-            ticker = trade["ticker"]
             try:
                 resp = await client.get(
-                    f"/v2/aggs/ticker/{ticker}/range/1/day/2026-06-01/{today}",
-                    params={"adjusted": "true", "sort": "asc", "limit": 30, "apiKey": api_key},
+                    f"/v2/aggs/ticker/{trade['ticker']}/range/1/day/2026-06-01/{today}",
+                    params={"adjusted": "true", "sort": "asc", "limit": 60, "apiKey": api_key},
                 )
-                if resp.status_code != 200:
+                if resp.status_code != 200 or not resp.json().get("results"):
                     continue
-                raw = resp.json().get("results", [])
-                if not raw:
-                    continue
+                raw = resp.json()["results"]
+
+                # Convert Massive timestamps to date strings for comparison
+                def _ts_date(ts_ms):
+                    return datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc).date().isoformat()
+
+                # Find candles AFTER entry date (skip the entry-day candle)
+                future_candles = []
+                for r in raw:
+                    if _ts_date(r["t"]) > trade["entry_date"]:
+                        future_candles.append(r)
+
+                if not future_candles:
+                    continue  # no trading days after entry yet
 
                 entry = trade["entry"]
-                high = max(c["h"] for c in raw[-10:])
-                low = min(c["l"] for c in raw[-10:])
-                current = raw[-1]["c"]
-
-                hit_stop = low <= trade["stop_loss"]
-                hit_t2 = high >= trade["target_2"]
-                hit_t1 = high >= trade["target_1"]
+                # Check all future candles: did high hit target? did low hit stop?
+                hit_stop = any(c["l"] <= trade["stop_loss"] for c in future_candles)
+                hit_t2 = any(c["h"] >= trade["target_2"] for c in future_candles)
+                hit_t1 = any(c["h"] >= trade["target_1"] for c in future_candles)
 
                 if hit_stop:
                     trade.update(status="loss", exit_price=trade["stop_loss"],
                                  exit_date=today, r_multiple=-1.0,
                                  pnl_pct=round((trade["stop_loss"] - entry) / entry * 100, 2))
-                    updated += 1
                 elif hit_t2:
                     trade.update(status="win", exit_price=trade["target_2"],
                                  exit_date=today, r_multiple=TARGET2_RISK_MULTIPLE,
                                  pnl_pct=round((trade["target_2"] - entry) / entry * 100, 2))
-                    updated += 1
                 elif hit_t1:
                     trade.update(status="win", exit_price=trade["target_1"],
                                  exit_date=today, r_multiple=TARGET1_RISK_MULTIPLE,
                                  pnl_pct=round((trade["target_1"] - entry) / entry * 100, 2))
-                    updated += 1
                 else:
-                    trade["current_price"] = current
-                    pnl = round((current - entry) / entry * 100, 2)
+                    trade["current_price"] = future_candles[-1]["c"]
+                    trade["days_open"] = len(future_candles)
+                    pnl = round((future_candles[-1]["c"] - entry) / entry * 100, 2)
                     trade["pnl_pct"] = pnl
             except Exception:
                 continue
 
     _save_trades(trades_db)
     return _portfolio_summary(trades_db["trades"])
+
+
+def timestamp_from_date(date_str):
+    """Convert '2026-06-23' to a timestamp_ms for comparison."""
+    dt = datetime.strptime(date_str, "%Y-%m-%d")
+    return int(dt.timestamp() * 1000)
 
 
 def _portfolio_summary(trades):
