@@ -121,6 +121,23 @@ def compute_indicators(candles):
         return {"error": "insufficient_data"}
 
     last = candles[-1]
+    
+    # ---- DATA FRESHNESS ----
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    last_ts = last.get("timestamp_ms", 0)
+    if isinstance(last_ts, (int, float)):
+        last_date = datetime.fromtimestamp(last_ts / 1000, tz=timezone.utc)
+        days_old = (now - last_date).days
+    else:
+        days_old = 999
+    
+    # ---- LIQUIDITY ----
+    recent_vols = [c.get("volume", 0) or 0 for c in candles[-10:]]
+    avg_vol_10 = sum(recent_vols) / len(recent_vols) if recent_vols else 0
+    last_price = last.get("close", 0) or 0
+    
+    # ---- INDICATORS ----
     upper, mid, lower = bollinger_bands(candles)
     sma_20 = sma(candles, 20) if len(candles) >= 20 else None
     sma_50 = sma(candles, 50) if len(candles) >= 50 else None
@@ -140,6 +157,11 @@ def compute_indicators(candles):
     return {
         "close": last.get("close"),
         "volume": last.get("volume"),
+        "last_price": last_price,
+        "avg_volume_10": avg_vol_10,
+        "days_since_last_trade": days_old,
+        "is_fresh": days_old <= 7,
+        "is_liquid": avg_vol_10 >= 500_000 and last_price >= 5.0,
         "sma_20": sma_20,
         "sma_50": sma_50,
         "sma_200": sma_200,
@@ -175,6 +197,12 @@ def check_screen(indicators, screen_name):
 
     ind = indicators
     if ind.get("error"):
+        return False
+
+    # Global filters — every screen requires fresh, liquid data
+    if not ind.get("is_fresh"):
+        return False
+    if not ind.get("is_liquid"):
         return False
 
     for condition in screen["conditions"]:
