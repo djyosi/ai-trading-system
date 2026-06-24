@@ -29,6 +29,7 @@ _DASHBOARD_HTML = """\
   .row .lbl { color: #8899bb; }
   .row .val { font-weight: 500; }
   .green { color: #22c55e; }
+  .blue { color: #3b82f6; }
   .red { color: #ef4444; }
   .yellow { color: #f59e0b; }
   .gray { color: #94a3b8; }
@@ -65,6 +66,11 @@ _DASHBOARD_HTML = """\
 
 <div class="grid">
   <div class="card full" id="segments-card"><h2>🏆 Best Setups (with evidence)</h2><div class="loading">Loading...</div></div>
+</div>
+
+<div class="grid">
+  <div class="card" id="portfolio-summary-card"><h2>📊 Portfolio P&L</h2><div class="loading">Loading...</div></div>
+  <div class="card" id="portfolio-trades-card"><h2>📝 Active Trades</h2><div class="loading">Loading...</div></div>
 </div>
 
 <div class="grid">
@@ -217,7 +223,35 @@ function renderEmpty(d) {
 }
 
 load();
+loadPortfolio();
 setInterval(load, 60000);
+setInterval(loadPortfolio, 120000);
+
+async function loadPortfolio() {
+  try {
+    const res = await fetch('/api/screener/ta/portfolio');
+    if (!res.ok) { document.getElementById('portfolio-summary-card').querySelector('.loading').textContent = 'Portfolio API not available'; return; }
+    const d = await res.json();
+    const s = d.summary || {};
+    document.getElementById('portfolio-summary-card').innerHTML = '<h2>📊 Portfolio P&L</h2>' +
+      row('Total trades', s.total_trades || 0) +
+      row('Open', '<span class="blue">' + (s.open || 0) + '</span>') +
+      row('Closed', '<span class="' + (s.wins > 0 ? 'green' : s.losses > 0 ? 'red' : '') + '">' + (s.closed || 0) + ' (' + (s.wins || 0) + 'W/' + (s.losses || 0) + 'L)</span>') +
+      row('Win rate', s.win_rate ? s.win_rate + '%' : '-') +
+      row('Expectancy R', fmtR(s.expectancy_r), s.expectancy_r > 0 ? 'green' : s.expectancy_r < 0 ? 'red' : '');
+
+    const trades = d.trades || [];
+    const active = trades.filter(t => t.status === 'open').slice(0, 6);
+    if (!active.length) {
+      document.getElementById('portfolio-trades-card').innerHTML = '<h2>📝 Active Trades</h2><div class="empty">No open trades. Run scan first.</div>';
+    } else {
+      document.getElementById('portfolio-trades-card').innerHTML = '<h2>📝 Active Trades</h2>' +
+        active.map(t => row(t.ticker, '$' + t.entry.toFixed(2) + ' → stop $' + t.stop_loss.toFixed(2), '')).join('');
+    }
+  } catch(e) {
+    document.getElementById('portfolio-summary-card').innerHTML = '<h2>📊 Portfolio P&L</h2><div class="empty">Error: ' + e.message + '</div>';
+  }
+}
 
 async function runTA() {
   const ticker = document.getElementById('ta-ticker').value.trim().toUpperCase();
