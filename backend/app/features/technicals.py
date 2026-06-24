@@ -60,3 +60,16 @@ def calculate_prior_levels(candles):
         "prior_high": max(candle.get("high") for candle in prior),
         "prior_low": min(candle.get("low") for candle in prior),
     }
+
+
+def calculate_technical_score(daily_candles):
+    """TA score from daily candles (-7 to +7). Uses S/R, channel, volume, patterns.
+
+    Returns None when insufficient data.
+    """
+    if not daily_candles or len(daily_candles) < 25:
+        return None
+
+    from app.technicals.entry_signals import analyze_technical
+    result = analyze_technical("", daily_candles)
+    return result.get("score")

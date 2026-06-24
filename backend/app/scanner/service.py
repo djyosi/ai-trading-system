@@ -14,6 +14,7 @@ from app.features.technicals import (
     calculate_opening_range,
     calculate_prior_levels,
     calculate_vwap,
+    calculate_technical_score,
 )
 from app.recommendations.service import build_recommendation
 
@@ -104,6 +105,7 @@ def build_features(snapshot, daily_candles, intraday_candles):
         **opening_range,
         **prior_levels,
         "chart_pattern": chart_pattern,
+        "technical_score": calculate_technical_score(daily_candles),
     }
 
 
