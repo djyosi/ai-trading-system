@@ -55,6 +55,11 @@ def add_trades_from_scan(scan_data, candles_map=None):
     existing_tickers = {t["ticker"] for t in trades_db["trades"] if t["status"] == "open"}
     added = 0
 
+    # Entry date = yesterday (scan_date - 1 day), since entry is yesterday's close
+    from datetime import datetime, timedelta
+    entry_date_obj = datetime.strptime(scan_data["scan_date"], "%Y-%m-%d") - timedelta(days=1)
+    entry_date = entry_date_obj.strftime("%Y-%m-%d")
+
     for rec in scan_data.get("top_recommendations", []):
         ticker = rec["ticker"]
         if ticker in existing_tickers:
@@ -63,9 +68,6 @@ def add_trades_from_scan(scan_data, candles_map=None):
         pl = _entry_stop_target(close, 3.0)
         if pl is None:
             continue
-
-        # Entry timestamp: use yesterday's date if available
-        entry_date = scan_data["scan_date"]
 
         trade = {
             "id": trades_db["next_id"] + added,

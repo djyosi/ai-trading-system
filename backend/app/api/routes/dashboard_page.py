@@ -13,36 +13,52 @@ _DASHBOARD_HTML = """\
 <title>AI Trading Dashboard</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #0a0e17; color: #e0e6f0; font-family: -apple-system, 'SF Mono', Fira Code, monospace; padding: 20px; }
-  h1 { font-size: 18px; font-weight: 600; color: #8899bb; margin-bottom: 16px; }
+  body { background: #0a0e17; color: #e0e6f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; }
+  h1 { font-size: 20px; font-weight: 700; color: #e0e6f0; margin-bottom: 20px; letter-spacing: -0.3px; }
   h1 span { color: #4a9eff; }
-  .banner { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 10px; }
+  .banner { padding: 14px 18px; border-radius: 10px; margin-bottom: 20px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 12px; }
   .banner-green { background: #052e16; border: 1px solid #166534; color: #22c55e; }
   .banner-yellow { background: #451a03; border: 1px solid #78350f; color: #f59e0b; }
   .banner-red { background: #450a0a; border: 1px solid #7f1d1d; color: #ef4444; }
   .banner-gray { background: #1e293b; border: 1px solid #334155; color: #94a3b8; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; margin-bottom: 12px; }
-  .card { background: #111827; border: 1px solid #1e293b; border-radius: 8px; padding: 14px; }
-  .card h2 { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #6b7a99; margin-bottom: 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 14px; margin-bottom: 14px; }
+  .card { background: #111827; border: 1px solid #1e293b; border-radius: 12px; padding: 18px; transition: border-color 0.2s; }
+  .card:hover { border-color: #2a3a55; }
+  .card h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #6b7a99; margin-bottom: 12px; font-weight: 600; }
   .full { grid-column: 1 / -1; }
-  .row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; font-size: 13px; }
-  .row .lbl { color: #8899bb; }
-  .row .val { font-weight: 500; }
+  .row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 14px; border-bottom: 1px solid #0f1729; }
+  .row:last-child { border-bottom: none; }
+  .row .lbl { color: #8899bb; font-size: 13px; }
+  .row .val { font-weight: 600; font-size: 14px; }
   .green { color: #22c55e; }
   .blue { color: #3b82f6; }
   .red { color: #ef4444; }
   .yellow { color: #f59e0b; }
   .gray { color: #94a3b8; }
-  .chip { display: inline-block; padding: 1px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
-  .chip-green { background: #052e16; color: #22c55e; }
-  .chip-red { background: #450a0a; color: #ef4444; }
-  .chip-yellow { background: #451a03; color: #f59e0b; }
-  .chip-gray { background: #1e293b; color: #8899bb; }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  th { text-align: left; color: #6b7a99; font-weight: 500; padding: 5px 4px; border-bottom: 1px solid #1e293b; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
-  td { padding: 5px 4px; border-bottom: 1px solid #1a2233; }
-  .loading { color: #6b7a99; font-size: 13px; text-align: center; padding: 30px; }
-  .empty { color: #4a5568; font-size: 12px; text-align: center; padding: 16px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-green { background: #052e16; color: #22c55e; }
+  .badge-red { background: #450a0a; color: #ef4444; }
+  .badge-yellow { background: #451a03; color: #f59e0b; }
+  .badge-blue { background: #0c1f3f; color: #60a5fa; }
+  .badge-gray { background: #1e293b; color: #94a3b8; }
+  .stat { display: flex; align-items: center; gap: 6px; }
+  .stat-num { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+  .stat-lbl { font-size: 11px; color: #6b7a99; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stats-row { display: flex; gap: 20px; margin-bottom: 10px; flex-wrap: wrap; }
+  .trades-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+  .trades-table th { text-align: left; color: #6b7a99; font-weight: 500; padding: 6px 5px; border-bottom: 1px solid #1e293b; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .trades-table td { padding: 7px 5px; border-bottom: 1px solid #0f1729; }
+  .trades-table tr:last-child td { border-bottom: none; }
+  .trades-table .ticker-cell { font-weight: 700; color: #e0e6f0; }
+  .pct-up { color: #22c55e; font-weight: 600; }
+  .pct-down { color: #ef4444; font-weight: 600; }
+  .pct-flat { color: #94a3b8; font-weight: 600; }
+  .loading { color: #6b7a99; font-size: 14px; text-align: center; padding: 30px; }
+  .empty { color: #4a5568; font-size: 13px; text-align: center; padding: 20px; }
+  input { background: #1e293b; border: 1px solid #334155; color: #e0e6f0; padding: 10px 14px; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s; }
+  input:focus { border-color: #4a9eff; }
+  button { background: #2563eb; border: none; color: #fff; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background 0.2s; }
+  button:hover { background: #1d4ed8; }
 </style>
 </head>
 <body>
@@ -230,26 +246,55 @@ setInterval(loadPortfolio, 120000);
 async function loadPortfolio() {
   try {
     const res = await fetch('/api/screener/ta/portfolio');
-    if (!res.ok) { document.getElementById('portfolio-summary-card').querySelector('.loading').textContent = 'Portfolio API not available'; return; }
+    if (!res.ok) { document.getElementById('portfolio-summary-card').querySelector('.loading').textContent = 'Not available'; return; }
     const d = await res.json();
     const s = d.summary || {};
-    document.getElementById('portfolio-summary-card').innerHTML = '<h2>📊 Portfolio P&L</h2>' +
-      row('Total trades', s.total_trades || 0) +
-      row('Open', '<span class="blue">' + (s.open || 0) + '</span>') +
-      row('Closed', '<span class="' + (s.wins > 0 ? 'green' : s.losses > 0 ? 'red' : '') + '">' + (s.closed || 0) + ' (' + (s.wins || 0) + 'W/' + (s.losses || 0) + 'L)</span>') +
-      row('Win rate', s.win_rate ? s.win_rate + '%' : '-') +
-      row('Expectancy R', fmtR(s.expectancy_r), s.expectancy_r > 0 ? 'green' : s.expectancy_r < 0 ? 'red' : '');
 
+    // Summary card with big stats
+    const avgPnl = d.trades && d.trades.length ? d.trades.reduce((a,t) => a + (t.pnl_pct||0), 0) / d.trades.length : 0;
+    const up = d.trades ? d.trades.filter(t => (t.pnl_pct||0) > 0).length : 0;
+    const dn = d.trades ? d.trades.filter(t => (t.pnl_pct||0) < 0).length : 0;
+
+    const avgCls = avgPnl > 0 ? 'green' : avgPnl < 0 ? 'red' : 'gray';
+    document.getElementById('portfolio-summary-card').innerHTML =
+      '<h2>📊 Portfolio P&L</h2>' +
+      '<div class="stats-row">' +
+        '<div class="stat"><span class="stat-num ' + avgCls + '">' + (avgPnl > 0 ? '+' : '') + avgPnl.toFixed(2) + '%</span><span class="stat-lbl">Avg P&L</span></div>' +
+        '<div class="stat"><span class="stat-num blue">' + (s.open||0) + '</span><span class="stat-lbl">Open</span></div>' +
+        '<div class="stat"><span class="stat-num gray">' + (s.closed||0) + '</span><span class="stat-lbl">Closed</span></div>' +
+        '<div class="stat"><span class="stat-num green">' + (s.wins||0) + '</span><span class="stat-lbl">Wins</span></div>' +
+        '<div class="stat"><span class="stat-num red">' + (s.losses||0) + '</span><span class="stat-lbl">Losses</span></div>' +
+      '</div>' +
+      '<div class="row"><span class="lbl">Win Rate</span><span class="val gray">' + (s.win_rate ? s.win_rate + '%' : '—') + '</span></div>' +
+      '<div class="row"><span class="lbl">Expectancy R</span><span class="val ' + (s.expectancy_r > 0 ? 'green' : s.expectancy_r < 0 ? 'red' : 'gray') + '">' + (s.expectancy_r ? s.expectancy_r.toFixed(2) + 'R' : '0.00R') + '</span></div>';
+
+    // Active trades as a TABLE with P&L
     const trades = d.trades || [];
-    const active = trades.filter(t => t.status === 'open').slice(0, 6);
+    const active = trades.filter(t => t.status === 'open');
     if (!active.length) {
-      document.getElementById('portfolio-trades-card').innerHTML = '<h2>📝 Active Trades</h2><div class="empty">No open trades. Run scan first.</div>';
-    } else {
-      document.getElementById('portfolio-trades-card').innerHTML = '<h2>📝 Active Trades</h2>' +
-        active.map(t => row(t.ticker, '$' + t.entry.toFixed(2) + ' → stop $' + t.stop_loss.toFixed(2), '')).join('');
+      document.getElementById('portfolio-trades-card').innerHTML = '<h2>📝 Active Trades</h2><div class="empty">No open trades</div>';
+      return;
     }
+    let rows = active.map(t => {
+      const pnl = t.pnl_pct || 0;
+      const pnlCls = pnl > 0 ? 'pct-up' : pnl < 0 ? 'pct-down' : 'pct-flat';
+      const pnlStr = (pnl > 0 ? '+' : '') + pnl.toFixed(2) + '%';
+      return '<tr>' +
+        '<td class="ticker-cell">' + t.ticker + '</td>' +
+        '<td>$' + t.entry.toFixed(2) + '</td>' +
+        '<td>$' + (t.current_price || t.entry).toFixed(2) + '</td>' +
+        '<td class="' + pnlCls + '">' + pnlStr + '</td>' +
+        '<td class="gray">$' + t.stop_loss.toFixed(2) + '</td>' +
+        '<td><span class="badge badge-blue">' + (t.screens||[]).slice(0,1).join(', ') + '</span></td>' +
+      '</tr>';
+    }).join('');
+    document.getElementById('portfolio-trades-card').innerHTML =
+      '<h2>📝 Active Trades</h2>' +
+      '<table class="trades-table">' +
+        '<thead><tr><th>Ticker</th><th>Entry</th><th>Current</th><th>P&L</th><th>Stop</th><th>Signal</th></tr></thead>' +
+        '<tbody>' + rows + '</tbody></table>';
   } catch(e) {
-    document.getElementById('portfolio-summary-card').innerHTML = '<h2>📊 Portfolio P&L</h2><div class="empty">Error: ' + e.message + '</div>';
+    document.getElementById('portfolio-summary-card').innerHTML = '<h2>📊 Portfolio P&L</h2><div class="empty">Error</div>';
   }
 }
 
