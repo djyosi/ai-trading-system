@@ -81,12 +81,12 @@ async def run_daily_scan():
                 print(f"  {idx+1}/{len(tickers)}... ({total} matches)")
 
     # Rank tickers by number of screen matches
-    ranked = sorted(ticker_scores.items(), key=lambda x: (-len(x[1]), x[0]))
+    ranked = sorted(ticker_scores.items(), key=lambda x: (-sum(SCREENS[s].get("weight", 1) for s in x[1]), x[0]))
     recommendations = [
         {
             "ticker": ticker,
             "sector": get_sector(ticker),
-            "score": len(screens),
+            "score": sum(SCREENS[s].get("weight", 1) for s in screens),
             "screens": screens,
         }
         for ticker, screens in ranked

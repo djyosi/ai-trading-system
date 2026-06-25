@@ -15,6 +15,7 @@ SCREENS = {
             "volume > 1.3 * avg_volume_20",
         ],
         "min_candles": 25,
+        "weight": 3,  # SIM: 56.1% WR, +1.66% avg  ← BEST
     },
     "rsi_oversold": {
         "name": "RSI Oversold",
@@ -24,6 +25,7 @@ SCREENS = {
             "close > sma_50",
         ],
         "min_candles": 55,
+        "weight": 2,  # SIM: 53.8% WR, +0.94% avg
     },
     "volume_support": {
         "name": "Volume Support Bounce",
@@ -34,6 +36,7 @@ SCREENS = {
             "close > low_of_5",
         ],
         "min_candles": 25,
+        "weight": 2,  # SIM: 50.0% WR, +1.01% avg
     },
     "golden_cross": {
         "name": "Golden Cross (SMA 50/200)",
@@ -44,6 +47,7 @@ SCREENS = {
             "close > sma_50",
         ],
         "min_candles": 210,
+        "weight": 2,  # Rare but strong signal
     },
     "bull_flag": {
         "name": "Bull Flag Breakout",
@@ -53,6 +57,7 @@ SCREENS = {
             "volume > 1.5 * avg_volume_20",
         ],
         "min_candles": 25,
+        "weight": 2,
     },
     "macd_crossover": {
         "name": "MACD Crossover",
@@ -62,6 +67,7 @@ SCREENS = {
             "macd_1d <= signal_1d",
         ],
         "min_candles": 30,
+        "weight": 1,  # SIM: 49.3% WR, -0.45% avg  ← LOSING
     },
     "sma_20_50_bullish": {
         "name": "SMA 20/50 Bullish",
@@ -71,6 +77,7 @@ SCREENS = {
             "close > sma_20",
         ],
         "min_candles": 55,
+        "weight": 1,  # SIM: 48.8% WR, +0.15% avg ← random
     },
     "oversold_bollinger": {
         "name": "Oversold Bollinger Combo",
@@ -81,6 +88,7 @@ SCREENS = {
             "volume > avg_volume_20",
         ],
         "min_candles": 25,
+        "weight": 1,  # SIM: 50.0% WR, +0.33% avg
     },
     "high_volume_spike": {
         "name": "High Volume Spike",
@@ -89,6 +97,7 @@ SCREENS = {
             "volume > 3.0 * avg_volume_20",
         ],
         "min_candles": 25,
+        "weight": 2,  # SIM: 66.7% WR, +11.67% avg (small sample)
     },
     "bullish_engulfing": {
         "name": "Bullish Engulfing",
@@ -98,6 +107,7 @@ SCREENS = {
             "volume > avg_volume_20",
         ],
         "min_candles": 25,
+        "weight": 2,
     },
     "three_up_days": {
         "name": "3 Green Days",
@@ -107,6 +117,7 @@ SCREENS = {
             "volume_rising_3",
         ],
         "min_candles": 25,
+        "weight": 1,
     },
     "bollinger_squeeze": {
         "name": "Bollinger Squeeze",
@@ -116,6 +127,7 @@ SCREENS = {
             "band_width_10d_ago > 0.08",
         ],
         "min_candles": 30,
+        "weight": 1,  # SIM: 44.0% WR, -1.22% avg ← LOSING
     },
     "support_bounce": {
         "name": "Support Bounce",
@@ -126,6 +138,7 @@ SCREENS = {
             "volume > avg_volume_20",
         ],
         "min_candles": 30,
+        "weight": 2,
     },
     "above_sma_50": {
         "name": "Above SMA 50 with Volume",
@@ -135,5 +148,6 @@ SCREENS = {
             "volume > 1.5 * avg_volume_20",
         ],
         "min_candles": 55,
+        "weight": 2,  # SIM: 50.8% WR, +0.76% avg
     },
 }
