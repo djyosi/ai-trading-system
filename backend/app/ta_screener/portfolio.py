@@ -61,11 +61,12 @@ def _entry_stop_target(close, atr_pct):
         "entry": round(close, 2),
         "entry_zone": [round(close * 0.99, 2), round(close * 1.01, 2)],
         "stop_loss": round(close - stop_dist, 2),
+        "initial_stop": round(close - stop_dist, 2),  # original stop for R calc
         "target_1": round(close + stop_dist * TARGET1_RISK_MULTIPLE, 2),
         "target_2": round(close + stop_dist * TARGET2_RISK_MULTIPLE, 2),
         "risk_r": round(stop_dist / close * 100, 2),
-        "highest_price": round(close, 2),   # track highest seen
-        "partial_closed": False,             # sold 50% at target 1?
+        "highest_price": round(close, 2),
+        "partial_closed": False,
     }
 
 
@@ -154,9 +155,22 @@ async def update_open_trades():
 
                     # ── CHECK STOP ──
                     if low <= stop:
-                        trade.update(status="loss", exit_price=round(stop, 2),
-                                     exit_date=today, r_multiple=-1.0,
-                                     pnl_pct=round((stop - entry) / entry * 100, 2))
+                        if stop > entry:
+                            # Trailing stop locked in profit → it's a win
+                            r = round((stop - entry) / (entry - trade.get("initial_stop", entry - abs(entry * 0.09))), 2)
+                            trade.update(status="win", exit_price=round(stop, 2),
+                                         exit_date=today, r_multiple=max(0.01, r),
+                                         pnl_pct=round((stop - entry) / entry * 100, 2))
+                        elif stop == entry:
+                            # Breakeven
+                            trade.update(status="win", exit_price=round(stop, 2),
+                                         exit_date=today, r_multiple=0.0,
+                                         pnl_pct=0.0)
+                        else:
+                            # Stop below entry → real loss
+                            trade.update(status="loss", exit_price=round(stop, 2),
+                                         exit_date=today, r_multiple=-1.0,
+                                         pnl_pct=round((stop - entry) / entry * 100, 2))
                         break
 
                     # ── CHECK TARGET 2 (full close) ──
