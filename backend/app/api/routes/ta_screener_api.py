@@ -66,12 +66,37 @@ async def paper_outcomes():
 
 
 @router.get("/portfolio")
-async def portfolio():
-    """Get portfolio summary + all trades."""
+async def portfolio(date: str = None):
+    """Get portfolio summary + all trades. Optional date parameter."""
+    from app.ta_screener.portfolio import _portfolio_summary, _load_trades
+
+    if date:
+        # Load historical scan data for that date
+        scan_path = SCANS_DIR / f"scan-{date}.json"
+        if scan_path.exists():
+            scan_data = json.loads(scan_path.read_text())
+            return {
+                "scan_date": date,
+                "historical": True,
+                "top_recommendations": scan_data.get("top_recommendations", [])[:10],
+                "summary": {
+                    "total_trades": 0, "open": 0, "closed": 0,
+                    "wins": 0, "losses": 0,
+                },
+            }
+        return {"error": "no_data", "scan_date": date}
+
     trades_db = _load_trades()
-    from app.ta_screener.portfolio import _portfolio_summary
     summary = _portfolio_summary(trades_db["trades"])
     return {"summary": summary, "trades": trades_db["trades"]}
+
+
+@router.get("/scans")
+async def scan_dates():
+    """Get list of available scan dates."""
+    files = sorted(SCANS_DIR.glob("scan-*.json"))
+    dates = [f.stem.replace("scan-", "") for f in files]
+    return {"dates": dates}
 
 
 @router.post("/portfolio/update")

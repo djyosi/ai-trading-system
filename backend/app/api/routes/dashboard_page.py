@@ -84,6 +84,17 @@ _DASHBOARD_HTML = """\
   <div class="card full" id="segments-card"><h2>🏆 Best Setups (with evidence)</h2><div class="loading">Loading...</div></div>
 </div>
 
+<div class="grid" style="align-items:center">
+  <div style="display:flex;gap:10px;align-items:center;margin-bottom:4px">
+    <span style="color:#6b7a99;font-size:13px">📅 View date:</span>
+    <input type="date" id="view-date" style="background:#1e293b;border:1px solid #334155;color:#e0e6f0;padding:6px 10px;border-radius:6px;font-size:13px">
+    <button onclick="loadPortfolio()" style="background:#2563eb;border:none;color:#fff;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px">Go</button>
+    <span style="color:#4a5568;font-size:12px;margin-left:8px">
+      Available: <span id="avail-dates"></span>
+    </span>
+  </div>
+</div>
+
 <div class="grid">
   <div class="card" id="portfolio-summary-card"><h2>📊 Portfolio P&L</h2><div class="loading">Loading...</div></div>
   <div class="card" id="portfolio-trades-card"><h2>📝 Active Trades</h2><div class="loading">Loading...</div></div>
@@ -240,15 +251,43 @@ function renderEmpty(d) {
 
 load();
 loadPortfolio();
+loadAvailableDates();
 setInterval(load, 60000);
 setInterval(loadPortfolio, 120000);
 
-async function loadPortfolio() {
+async function loadAvailableDates() {
   try {
-    const res = await fetch('/api/screener/ta/portfolio');
-    if (!res.ok) { document.getElementById('portfolio-summary-card').querySelector('.loading').textContent = 'Not available'; return; }
+    const res = await fetch('/api/screener/ta/scans');
+    const d = await res.json();
+    const dates = d.dates || [];
+    const sel = document.getElementById('view-date');
+    const lbl = document.getElementById('avail-dates');
+    if (sel && dates.length) {
+      sel.value = dates[dates.length - 1];
+      sel.min = dates[0];
+      sel.max = dates[dates.length - 1];
+    }
+    if (lbl) lbl.textContent = dates.join(', ');
+  } catch(e) {}
+}
+
+async function loadPortfolio() {
+  const dateInput = document.getElementById('view-date');
+  const dateParam = dateInput && dateInput.value ? '?date=' + dateInput.value : '';
+  try {
+    const res = await fetch('/api/screener/ta/portfolio' + dateParam);
+    if (!res.ok) { return; }
     const d = await res.json();
     const s = d.summary || {};
+
+    if (d.historical) {
+      // Show historical scan data
+      const picks = d.top_recommendations || [];
+      let rows = picks.map(r => '<tr><td style="font-weight:700">' + r.ticker + '</td><td class="gray">' + (r.sector||'') + '</td><td><span class="badge badge-blue">' + r.score + '</span></td><td class="gray">' + (r.screens||[]).slice(0,2).join(', ') + '</td></tr>').join('');
+      document.getElementById('portfolio-summary-card').innerHTML = '<h2>📊 Historical Scan — ' + d.scan_date + '</h2><div class="stats-row"><div class="stat"><span class="stat-num gray">' + picks.length + '</span><span class="stat-lbl">Top Picks</span></div></div>';
+      document.getElementById('portfolio-trades-card').innerHTML = '<h2>📝 Top Picks on ' + d.scan_date + '</h2><table class="trades-table"><thead><tr><th>Ticker</th><th>Sector</th><th>Score</th><th>Signal</th></tr></thead><tbody>' + rows + '</tbody></table>';
+      return;
+    }
 
     // Summary card with big stats
     const avgPnl = d.trades && d.trades.length ? d.trades.reduce((a,t) => a + (t.pnl_pct||0), 0) / d.trades.length : 0;
