@@ -150,4 +150,80 @@ SCREENS = {
         "min_candles": 55,
         "weight": 2,  # SIM: 50.8% WR, +0.76% avg
     },
+    # ── CHART PATTERN SCREENS ──────────────────────────────
+    "double_bottom": {
+        "name": "Double Bottom",
+        "description": "Two similar lows with a bounce — bullish reversal",
+        "conditions": [
+            "double_bottom_detected",
+            "volume > avg_volume_20",
+        ],
+        "min_candles": 25,
+        "weight": 3,
+    },
+    "double_top": {
+        "name": "Double Top",
+        "description": "Two similar highs with a drop — bearish reversal",
+        "conditions": [
+            "double_top_detected",
+        ],
+        "min_candles": 25,
+        "weight": 2,
+    },
+    "head_shoulders": {
+        "name": "Head & Shoulders",
+        "description": "Head and shoulders pattern — bearish reversal",
+        "conditions": [
+            "head_shoulders_detected",
+        ],
+        "min_candles": 25,
+        "weight": 2,
+    },
+    "rising_channel": {
+        "name": "Rising Channel",
+        "description": "Higher highs and higher lows — uptrend channel",
+        "conditions": [
+            "channel_up_detected",
+            "volume > avg_volume_20",
+        ],
+        "min_candles": 25,
+        "weight": 2,
+    },
+    "falling_channel": {
+        "name": "Falling Channel",
+        "description": "Lower highs and lower lows — downtrend channel",
+        "conditions": [
+            "channel_down_detected",
+        ],
+        "min_candles": 25,
+        "weight": 1,
+    },
+    "at_support": {
+        "name": "At Support Level",
+        "description": "Price near recent support with RSI turning up",
+        "conditions": [
+            "near_support",
+            "rsi_14 > rsi_14_3d_ago",
+        ],
+        "min_candles": 25,
+        "weight": 2,
+    },
+    "at_resistance": {
+        "name": "At Resistance Level",
+        "description": "Price near recent resistance — potential reversal down",
+        "conditions": [
+            "near_resistance",
+        ],
+        "min_candles": 25,
+        "weight": 1,
+    },
+    "bullish_divergence": {
+        "name": "Bullish Volume Divergence",
+        "description": "Lower lows with declining volume — momentum shifting up",
+        "conditions": [
+            "volume_divergence_bullish",
+        ],
+        "min_candles": 20,
+        "weight": 2,
+    },
 }

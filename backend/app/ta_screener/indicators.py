@@ -5,13 +5,11 @@ All functions take a list of candles: [{open, high, low, close, volume, timestam
 
 
 def sma(candles, period):
-    """Simple Moving Average of closing prices."""
     closes = [c["close"] for c in candles[-period:] if c.get("close") is not None]
     return sum(closes) / len(closes) if closes else None
 
 
 def rsi(candles, period=14):
-    """Relative Strength Index."""
     closes = [c["close"] for c in candles if c.get("close") is not None]
     if len(closes) < period + 1:
         return None
@@ -29,7 +27,6 @@ def rsi(candles, period=14):
 
 
 def bollinger_bands(candles, period=20, std=2):
-    """Bollinger Bands: upper, middle (SMA), lower."""
     closes = [c["close"] for c in candles[-period:] if c.get("close") is not None]
     if len(closes) < period:
         return None, None, None
@@ -40,19 +37,16 @@ def bollinger_bands(candles, period=20, std=2):
 
 
 def avg_volume(candles, period=20):
-    """Average volume over period."""
     vols = [c["volume"] for c in candles[-period:] if c.get("volume") is not None]
     return sum(vols) / len(vols) if vols else None
 
 
 def low_of_n(candles, n=5):
-    """Lowest low in last n candles."""
     lows = [c["low"] for c in candles[-n:] if c.get("low") is not None]
     return min(lows) if lows else None
 
 
 def detect_bull_flag(candles, lookback=10):
-    """Detect a bull flag: sharp up move, then consolidation, then breakout."""
     if len(candles) < lookback * 2:
         return False
     pole = candles[-lookback * 2:-lookback]
@@ -63,7 +57,6 @@ def detect_bull_flag(candles, lookback=10):
 
 
 def macd(candles, fast=12, slow=26, signal=9):
-    """MACD line and signal line."""
     closes = [c["close"] for c in candles if c.get("close") is not None]
     if len(closes) < slow + signal:
         return None, None
@@ -83,7 +76,6 @@ def macd(candles, fast=12, slow=26, signal=9):
 
 
 def detect_bullish_engulfing(candles):
-    """Check if last 2 candles form a bullish engulfing."""
     if len(candles) < 2:
         return False
     prev, curr = candles[-2], candles[-1]
@@ -94,7 +86,6 @@ def detect_bullish_engulfing(candles):
 
 
 def detect_three_up_days(candles):
-    """Check if last 3 candles are all up days."""
     if len(candles) < 3:
         return False
     for i in range(-3, 0):
@@ -104,7 +95,6 @@ def detect_three_up_days(candles):
 
 
 def detect_volume_rising_3(candles):
-    """Check if volume has increased for 3 consecutive days."""
     if len(candles) < 3:
         return False
     for i in range(-3, -1):
@@ -115,14 +105,127 @@ def detect_volume_rising_3(candles):
     return True
 
 
+# ── CHART PATTERN DETECTION ─────────────────────────────────────
+
+def _similar(a, b, tolerance=0.02):
+    """True if a and b are within tolerance% of each other."""
+    if not a or not b:
+        return False
+    return abs(a - b) / max(a, b) <= tolerance
+
+
+def detect_double_bottom(candles, window=5):
+    """Two lows at similar price levels, with a bounce in between."""
+    if len(candles) < window * 3 + 5:
+        return False
+    mid = len(candles) // 2
+    left = candles[mid - window:mid]
+    right = candles[mid:mid + window]
+    center = candles[mid - 2:mid + 2]
+    left_low = min(c["low"] for c in left)
+    right_low = min(c["low"] for c in right)
+    center_high = max(c["close"] for c in center)
+    bounce = (center_high - max(left_low, right_low)) / max(left_low, right_low)
+    return _similar(left_low, right_low, 0.03) and bounce > 0.03
+
+
+def detect_double_top(candles, window=5):
+    """Two highs at similar price levels, with a drop in between."""
+    if len(candles) < window * 3 + 5:
+        return False
+    mid = len(candles) // 2
+    left = candles[mid - window:mid]
+    right = candles[mid:mid + window]
+    center = candles[mid - 2:mid + 2]
+    left_high = max(c["high"] for c in left)
+    right_high = max(c["high"] for c in right)
+    center_low = min(c["close"] for c in center)
+    drop = (max(left_high, right_high) - center_low) / max(left_high, right_high)
+    return _similar(left_high, right_high, 0.03) and drop > 0.03
+
+
+def detect_head_shoulders(candles, window=3):
+    """Head and shoulders: left shoulder, higher head, right shoulder at similar level."""
+    if len(candles) < window * 4 + 5:
+        return False
+    left = candles[-window * 4:-window * 3]
+    head = candles[-window * 3:-window * 2]
+    right = candles[-window * 2:-window]
+    neck = candles[-window:]
+    if not left or not head or not right:
+        return False
+    left_high = max(c["high"] for c in left)
+    head_high = max(c["high"] for c in head)
+    right_high = max(c["high"] for c in right)
+    neck_low = min(c["low"] for c in neck)
+    return (head_high > left_high and
+            head_high > right_high and
+            _similar(left_high, right_high, 0.05) and
+            neck_low < min(c["low"] for c in left))
+
+
+def detect_channel_up(candles, lookback=20):
+    """Higher highs and higher lows = rising channel."""
+    if len(candles) < lookback:
+        return False
+    recent = candles[-lookback:]
+    highs = [c["high"] for c in recent]
+    lows = [c["low"] for c in recent]
+    return (highs[-1] > highs[0] * 1.05 and
+            lows[-1] > lows[0] * 1.02)
+
+
+def detect_channel_down(candles, lookback=20):
+    """Lower highs and lower lows = falling channel."""
+    if len(candles) < lookback:
+        return False
+    recent = candles[-lookback:]
+    highs = [c["high"] for c in recent]
+    lows = [c["low"] for c in recent]
+    return (highs[-1] < highs[0] * 0.95 and
+            lows[-1] < lows[0] * 0.98)
+
+
+def detect_near_support(candles, lookback=20, pct=3.0):
+    """Price near recent support level."""
+    if len(candles) < lookback:
+        return False
+    recent_low = min(c["low"] for c in candles[-lookback:])
+    current = candles[-1]["close"]
+    proximity = (current - recent_low) / recent_low * 100
+    return 0 <= proximity <= pct
+
+
+def detect_near_resistance(candles, lookback=20, pct=3.0):
+    """Price near recent resistance level."""
+    if len(candles) < lookback:
+        return False
+    recent_high = max(c["high"] for c in candles[-lookback:])
+    current = candles[-1]["close"]
+    proximity = (recent_high - current) / current * 100
+    return 0 <= proximity <= pct
+
+
+def detect_volume_divergence_bullish(candles, lookback=14):
+    """Price making lower lows but volume declining = bullish divergence."""
+    if len(candles) < lookback:
+        return False
+    recent = candles[-lookback:]
+    lows = [c["low"] for c in recent]
+    vols = [c["volume"] for c in recent]
+    first_half_vol = sum(vols[:len(vols)//2]) / (len(vols)//2)
+    second_half_vol = sum(vols[len(vols)//2:]) / (len(vols) - len(vols)//2)
+    return lows[-1] < lows[0] and second_half_vol < first_half_vol * 0.7
+
+
 def compute_indicators(candles):
     """Compute all indicators for a candle list. Returns dict."""
     if not candles or len(candles) < 3:
         return {"error": "insufficient_data"}
 
     last = candles[-1]
-    
-    # ---- DATA FRESHNESS ----
+
+    # Data freshness
     from datetime import datetime, timezone
     now = datetime.now(timezone.utc)
     last_ts = last.get("timestamp_ms", 0)
@@ -131,13 +234,13 @@ def compute_indicators(candles):
         days_old = (now - last_date).days
     else:
         days_old = 999
-    
-    # ---- LIQUIDITY ----
+
+    # Liquidity
     recent_vols = [c.get("volume", 0) or 0 for c in candles[-10:]]
     avg_vol_10 = sum(recent_vols) / len(recent_vols) if recent_vols else 0
     last_price = last.get("close", 0) or 0
-    
-    # ---- INDICATORS ----
+
+    # Indicators
     upper, mid, lower = bollinger_bands(candles)
     sma_20 = sma(candles, 20) if len(candles) >= 20 else None
     sma_50 = sma(candles, 50) if len(candles) >= 50 else None
@@ -149,7 +252,6 @@ def compute_indicators(candles):
     rsi_val = rsi(candles)
     rsi_3d = rsi(candles[:-3], 14) if len(candles) >= 17 else None
 
-    # Band width for squeeze detection
     b_width = (upper - lower) / mid if (upper and lower and mid and mid != 0) else None
     upper_10d, _, lower_10d = bollinger_bands(candles[:-10], 20, 2) if len(candles) > 25 else (None, None, None)
     b_width_10d = (upper_10d - lower_10d) / mid if (upper_10d and lower_10d and mid and mid != 0) else None
@@ -185,26 +287,30 @@ def compute_indicators(candles):
         "bullish_engulfing_detected": detect_bullish_engulfing(candles),
         "up_days_3": detect_three_up_days(candles),
         "volume_rising_3": detect_volume_rising_3(candles),
+        # Chart patterns
+        "double_bottom_detected": detect_double_bottom(candles),
+        "double_top_detected": detect_double_top(candles),
+        "head_shoulders_detected": detect_head_shoulders(candles),
+        "channel_up_detected": detect_channel_up(candles),
+        "channel_down_detected": detect_channel_down(candles),
+        "near_support": detect_near_support(candles),
+        "near_resistance": detect_near_resistance(candles),
+        "volume_divergence_bullish": detect_volume_divergence_bullish(candles),
     }
 
 
 def check_screen(indicators, screen_name):
-    """Check if indicators match a screen's conditions."""
     from app.ta_screener import SCREENS
     screen = SCREENS.get(screen_name)
     if not screen:
         return False
-
     ind = indicators
     if ind.get("error"):
         return False
-
-    # Global filters — every screen requires fresh, liquid data
     if not ind.get("is_fresh"):
         return False
     if not ind.get("is_liquid"):
         return False
-
     for condition in screen["conditions"]:
         if not _eval_condition(condition, ind):
             return False
@@ -212,7 +318,6 @@ def check_screen(indicators, screen_name):
 
 
 def _eval_condition(condition, ind):
-    """Evaluate a single condition string against indicators."""
     try:
         return bool(eval(condition, {"__builtins__": {}}, ind))
     except Exception:
