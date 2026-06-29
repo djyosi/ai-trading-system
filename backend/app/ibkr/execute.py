@@ -40,7 +40,7 @@ def run():
         print("No new entries to execute")
         return
 
-    result = place_top_picks(new_picks[:5], position_size=2000)
+    result = place_top_picks(new_picks[:5], position_size=10000)
     print(f"\nResult: {result.get('status')}")
     if result.get("account"):
         print(f"Cash: ${result['account'].get('TotalCashValue',0):,.2f}")

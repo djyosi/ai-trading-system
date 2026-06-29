@@ -40,8 +40,9 @@ async def run_daily_scan():
     print(f"Scanning {len(tickers)} tickers across {len(SCREENS)} screens...")
     api_key = settings.massive_api_key
     scan_date = datetime.now(timezone.utc).date().isoformat()
-    matches = {s: [] for s in SCREENS}
-    ticker_scores = {}  # ticker -> list of (screen, rank)
+    matches = {name: [] for name in SCREENS}
+    ticker_scores = {}
+    ticker_prices = {}
 
     async with AsyncClient(base_url=settings.massive_base_url, timeout=30) as client:
         for idx, ticker in enumerate(tickers):
@@ -67,6 +68,11 @@ async def run_daily_scan():
                 if indicators.get("error"):
                     continue
 
+                # Store close price for portfolio
+                close_price = indicators.get("close")
+                if close_price:
+                    ticker_prices[ticker] = close_price
+
                 # Check each screen
                 for screen_name in SCREENS:
                     if check_screen(indicators, screen_name):
@@ -88,6 +94,7 @@ async def run_daily_scan():
             "sector": get_sector(ticker),
             "score": sum(SCREENS[s].get("weight", 1) for s in screens),
             "screens": screens,
+            "close": ticker_prices.get(ticker),
         }
         for ticker, screens in ranked
     ]

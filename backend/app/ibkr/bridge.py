@@ -24,7 +24,7 @@ TWS_PORT_LIVE = 7496
 CLIENT_ID = 100
 
 # ── SAFETY CONSTRAINTS ──────────────────────────────────────────
-MAX_POSITION_SIZE_USD = 5_000       # Max $5k per position without approval
+MAX_POSITION_SIZE_USD = 50_000       # Max $50k per position ($1M account)
 MAX_DAILY_LOSS_PCT = 5.0            # Stop new orders if daily loss > 5%
 MAX_ACCOUNT_LOSS_PCT = 10.0         # Hard stop if account down > 10%
 LIVE_TRADING_ENABLED = False         # Set True in .env to unlock live
