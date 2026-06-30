@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     ibkr_client_id: int = 7
     ibkr_account_mode: str = "paper"
     enable_ibkr: bool = False
+    ta_local_portfolio_enabled: bool = False
 
     default_risk_profile: str = "moderate"
     min_price: Decimal = Field(default=Decimal("5.00"))

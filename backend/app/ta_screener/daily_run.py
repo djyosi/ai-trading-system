@@ -15,7 +15,7 @@ from app.core.config import settings
 from app.ta_screener import SCREENS
 from app.ta_screener.indicators import compute_indicators, check_screen
 from app.ta_screener.market_intel import enrich_recommendations
-from app.ta_screener.portfolio import add_trades_from_scan, update_open_trades
+from app.ta_screener.portfolio import update_open_trades
 from app.features.sectors import get_sector
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -131,9 +131,15 @@ async def run_daily_scan():
     print(f"Tickers matched: {len(ticker_scores)}")
     print(f"Total matches: {result['total_matches']}")
 
-    # Save trades from top recommendations
-    trades_added = add_trades_from_scan(result)
-    print(f"Trades added: {trades_added}")
+    # Do not create local JSON "paper trades" by default. Recommendations are saved
+    # in scan files; actual paper trading should come from IBKR execution/fills.
+    if settings.ta_local_portfolio_enabled:
+        from app.ta_screener.portfolio import add_trades_from_scan
+
+        trades_added = add_trades_from_scan(result)
+        print(f"Local trades added: {trades_added}")
+    else:
+        print("Local trades added: 0 (disabled; IBKR paper execution is source of truth)")
 
     # Update existing open trades
     summary = await update_open_trades()
