@@ -59,6 +59,14 @@ _DASHBOARD_HTML = """\
   input:focus { border-color: #4a9eff; }
   button { background: #2563eb; border: none; color: #fff; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background 0.2s; }
   button:hover { background: #1d4ed8; }
+  .explain { background: linear-gradient(135deg, #0b2447, #111827); border: 1px solid #2563eb; }
+  .big-question { font-size: 13px; color: #93c5fd; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; font-weight: 700; }
+  .plain-answer { font-size: 22px; line-height: 1.25; font-weight: 800; color: #f8fafc; margin-bottom: 10px; }
+  .plain-sub { color: #cbd5e1; font-size: 14px; line-height: 1.45; }
+  .callout { background:#0f172a; border:1px solid #334155; border-radius:10px; padding:12px; margin-top:10px; color:#cbd5e1; font-size:13px; }
+  .decision-buy { color:#22c55e; font-weight:800; }
+  .decision-watch { color:#f59e0b; font-weight:800; }
+  .muted-small { color:#94a3b8; font-size:12px; line-height:1.35; }
 </style>
 </head>
 <body>
@@ -82,6 +90,19 @@ _DASHBOARD_HTML = """\
 
 <div class="grid">
   <div class="card full" id="segments-card"><h2>🏆 Best Setups (with evidence)</h2><div class="loading">Loading...</div></div>
+</div>
+
+<div class="grid">
+  <div class="card full explain" id="plain-explain-card">
+    <div class="big-question">What am I looking at?</div>
+    <div class="plain-answer">This page is the daily TA scanner: it ranks stocks by technical signals only.</div>
+    <div class="plain-sub">
+      Read it from top to bottom: highest TA score = strongest technical setup. News is shown only as a saved catalog for future research — it is <b>not</b> used for score, ranking, or IBKR orders.
+    </div>
+    <div class="callout">
+      <b>Current rule:</b> Top picks are candidates to review / send to IBKR paper execution. A row here is not proof of profit and not live money. It is the system's ranked watchlist.
+    </div>
+  </div>
 </div>
 
 <div class="grid" style="align-items:center">
@@ -284,18 +305,36 @@ async function loadPortfolio() {
     if (d.historical) {
       // Show historical scan data
       const picks = d.top_recommendations || [];
-      let rows = picks.map(r => {
+      let rows = picks.map((r, idx) => {
         const intel = r.market_intel || {};
         const cats = intel.catalysts || [];
-        const cat = cats.length ? cats[0].type + ': ' + cats[0].headline.slice(0,70) : 'no recent catalyst';
-        const flags = (intel.risk_flags || []).slice(0,2).join(', ') || '—';
+        const topSignals = (r.screens||[]).slice(0,3).join(', ');
+        const cat = cats.length ? cats[0].type + ': ' + cats[0].headline.slice(0,80) : 'No recent news saved';
+        const flags = (intel.risk_flags || []).slice(0,2).join(', ') || 'No major catalog flags';
         const taScore = r.ta_score || r.score || 0;
-        const newsCount = cats.length;
-        const policy = r.news_policy || (intel.catalog_only ? 'catalog_only_not_scored' : 'not_available');
-        return '<tr><td style="font-weight:700">' + r.ticker + '</td><td class="gray">' + (r.sector||'') + '</td><td><span class="badge badge-blue">' + taScore + '</span></td><td class="gray">' + (r.screens||[]).slice(0,2).join(', ') + '</td><td class="gray">' + newsCount + '</td><td class="gray">' + cat + '</td><td class="gray">' + flags + '</td><td class="gray">' + policy.replaceAll('_',' ') + '</td></tr>';
+        const action = idx < 5 ? 'TOP TA PICK' : 'WATCHLIST';
+        const actionCls = idx < 5 ? 'decision-buy' : 'decision-watch';
+        return '<tr>' +
+          '<td class="' + actionCls + '">' + action + '</td>' +
+          '<td class="ticker-cell">' + r.ticker + '<div class="muted-small">' + (r.sector||'') + '</div></td>' +
+          '<td><span class="badge badge-blue">' + taScore + '</span></td>' +
+          '<td>' + topSignals + '</td>' +
+          '<td class="muted-small">' + cat + '<br><b>Policy:</b> catalog only, not scored</td>' +
+          '<td class="muted-small">' + flags + '</td>' +
+        '</tr>';
       }).join('');
-      document.getElementById('portfolio-summary-card').innerHTML = '<h2>📊 Historical Scan — ' + d.scan_date + '</h2><div class="stats-row"><div class="stat"><span class="stat-num gray">' + picks.length + '</span><span class="stat-lbl">Top Picks</span></div></div>';
-      document.getElementById('portfolio-trades-card').innerHTML = '<h2>📝 Top Picks + News Catalog on ' + d.scan_date + ' <span class="gray">(news not scored)</span></h2><table class="trades-table"><thead><tr><th>Ticker</th><th>Sector</th><th>TA Score</th><th>TA Signals</th><th>News #</th><th>Catalogued News</th><th>Risk Flags</th><th>Policy</th></tr></thead><tbody>' + rows + '</tbody></table>';
+      const best = picks[0] || {};
+      const bestCats = ((best.market_intel || {}).catalysts || []).length;
+      document.getElementById('portfolio-summary-card').innerHTML =
+        '<h2>📊 What this scan says — ' + d.scan_date + '</h2>' +
+        '<div class="stats-row">' +
+          '<div class="stat"><span class="stat-num blue">' + picks.length + '</span><span class="stat-lbl">Ranked picks</span></div>' +
+          '<div class="stat"><span class="stat-num green">' + (best.ticker || '-') + '</span><span class="stat-lbl">#1 TA pick</span></div>' +
+          '<div class="stat"><span class="stat-num gray">' + (best.score || 0) + '</span><span class="stat-lbl">Top TA score</span></div>' +
+          '<div class="stat"><span class="stat-num yellow">' + bestCats + '</span><span class="stat-lbl">News saved for #1</span></div>' +
+        '</div>' +
+        '<div class="callout"><b>How to read:</b> The first rows are the strongest technical setups. The news column is evidence saved for later correlation analysis; it does not change the order.</div>';
+      document.getElementById('portfolio-trades-card').innerHTML = '<h2>🎯 Ranked TA Picks — News Catalog Visible, Not Scored</h2><table class="trades-table"><thead><tr><th>Action</th><th>Ticker</th><th>TA Score</th><th>Why it ranked</th><th>News catalog</th><th>Risk/catalog flags</th></tr></thead><tbody>' + rows + '</tbody></table>';
       return;
     }
 
