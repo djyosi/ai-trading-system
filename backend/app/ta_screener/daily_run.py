@@ -14,6 +14,7 @@ from httpx import AsyncClient
 from app.core.config import settings
 from app.ta_screener import SCREENS
 from app.ta_screener.indicators import compute_indicators, check_screen
+from app.ta_screener.market_intel import enrich_recommendations
 from app.ta_screener.portfolio import add_trades_from_scan, update_open_trades
 from app.features.sectors import get_sector
 
@@ -99,6 +100,17 @@ async def run_daily_scan():
         for ticker, screens in ranked
     ]
 
+    # Attach Massive news/company/snapshot catalog to top 50 for future analysis.
+    # Policy: catalog data must NOT change TA ranking, score, or IBKR execution.
+    async with AsyncClient(base_url=settings.massive_base_url, timeout=30) as intel_client:
+        recommendations = await enrich_recommendations(
+            intel_client,
+            recommendations,
+            api_key,
+            scan_date=scan_date,
+            limit=50,
+        )
+
     # Build output
     result = {
         "scan_date": scan_date,
@@ -132,7 +144,13 @@ async def run_daily_scan():
     print(f"TOP RECOMMENDATIONS — {scan_date}")
     print(f"{'='*60}")
     for rec in recommendations[:10]:
-        print(f"  {rec['ticker']:6s} ({rec['sector']:15s}) score={rec['score']} → {', '.join(rec['screens'][:3])}")
+        catalysts = rec.get("market_intel", {}).get("catalysts", [])
+        catalyst_label = catalysts[0]["type"] if catalysts else "no_news"
+        print(
+            f"  {rec['ticker']:6s} ({rec['sector']:15s}) "
+            f"score={rec['score']} → {', '.join(rec['screens'][:3])} "
+            f"| news_catalog={catalyst_label} (not scored)"
+        )
 
     return result
 

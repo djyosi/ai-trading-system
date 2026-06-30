@@ -268,6 +268,7 @@ async function loadAvailableDates() {
       sel.max = dates[dates.length - 1];
     }
     if (lbl) lbl.textContent = dates.join(', ');
+    if (dates.length) loadPortfolio();
   } catch(e) {}
 }
 
@@ -283,9 +284,18 @@ async function loadPortfolio() {
     if (d.historical) {
       // Show historical scan data
       const picks = d.top_recommendations || [];
-      let rows = picks.map(r => '<tr><td style="font-weight:700">' + r.ticker + '</td><td class="gray">' + (r.sector||'') + '</td><td><span class="badge badge-blue">' + r.score + '</span></td><td class="gray">' + (r.screens||[]).slice(0,2).join(', ') + '</td></tr>').join('');
+      let rows = picks.map(r => {
+        const intel = r.market_intel || {};
+        const cats = intel.catalysts || [];
+        const cat = cats.length ? cats[0].type + ': ' + cats[0].headline.slice(0,70) : 'no recent catalyst';
+        const flags = (intel.risk_flags || []).slice(0,2).join(', ') || '—';
+        const taScore = r.ta_score || r.score || 0;
+        const newsCount = cats.length;
+        const policy = r.news_policy || (intel.catalog_only ? 'catalog_only_not_scored' : 'not_available');
+        return '<tr><td style="font-weight:700">' + r.ticker + '</td><td class="gray">' + (r.sector||'') + '</td><td><span class="badge badge-blue">' + taScore + '</span></td><td class="gray">' + (r.screens||[]).slice(0,2).join(', ') + '</td><td class="gray">' + newsCount + '</td><td class="gray">' + cat + '</td><td class="gray">' + flags + '</td><td class="gray">' + policy.replaceAll('_',' ') + '</td></tr>';
+      }).join('');
       document.getElementById('portfolio-summary-card').innerHTML = '<h2>📊 Historical Scan — ' + d.scan_date + '</h2><div class="stats-row"><div class="stat"><span class="stat-num gray">' + picks.length + '</span><span class="stat-lbl">Top Picks</span></div></div>';
-      document.getElementById('portfolio-trades-card').innerHTML = '<h2>📝 Top Picks on ' + d.scan_date + '</h2><table class="trades-table"><thead><tr><th>Ticker</th><th>Sector</th><th>Score</th><th>Signal</th></tr></thead><tbody>' + rows + '</tbody></table>';
+      document.getElementById('portfolio-trades-card').innerHTML = '<h2>📝 Top Picks + News Catalog on ' + d.scan_date + ' <span class="gray">(news not scored)</span></h2><table class="trades-table"><thead><tr><th>Ticker</th><th>Sector</th><th>TA Score</th><th>TA Signals</th><th>News #</th><th>Catalogued News</th><th>Risk Flags</th><th>Policy</th></tr></thead><tbody>' + rows + '</tbody></table>';
       return;
     }
 

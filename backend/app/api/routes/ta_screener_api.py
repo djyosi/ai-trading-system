@@ -5,7 +5,7 @@ import json
 from app.ta_screener.scanner import run_screen, SCREENS
 from app.ta_screener.daily_run import run_daily_scan
 from app.ta_screener.paper_trade import track_outcomes
-from app.ta_screener.portfolio import _load_trades, update_open_trades
+from app.ta_screener.portfolio import update_open_trades
 
 router = APIRouter(prefix="/api/screener/ta", tags=["ta-screener"])
 
