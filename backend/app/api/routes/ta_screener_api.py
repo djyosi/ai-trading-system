@@ -114,3 +114,94 @@ async def top_recommendations(limit: int = 10):
         return {"recommendations": [], "message": "No scans available"}
     latest = json.loads(scans[-1].read_text())
     return {"recommendations": latest.get("top_recommendations", [])[:limit]}
+
+
+@router.get("/ibkr-status")
+def ibkr_status(position_size: int = 10000, limit: int = 10):
+    """Show real IBKR paper positions and planned orders from latest TA scan.
+
+    Read-only endpoint: it does not place orders. It shows what IBKR currently
+    holds and what the execution script would buy next, skipping already-held
+    tickers.
+    """
+    scans = sorted(SCANS_DIR.glob("scan-*.json")) if SCANS_DIR.exists() else []
+    latest = json.loads(scans[-1].read_text()) if scans else {"top_recommendations": [], "scan_date": None}
+    top = latest.get("top_recommendations", [])[:limit]
+
+    try:
+        import asyncio
+
+        try:
+            asyncio.get_event_loop()
+        except RuntimeError:
+            asyncio.set_event_loop(asyncio.new_event_loop())
+
+        from app.ibkr.bridge import IBKRBridge
+
+        bridge = IBKRBridge()
+        if not bridge.connect():
+            return {
+                "status": "offline",
+                "message": "TWS paper is not connected/running on port 7497",
+                "scan_date": latest.get("scan_date"),
+                "positions": [],
+                "planned_orders": _planned_orders(top, set(), position_size),
+            }
+        try:
+            account = bridge.get_account_summary()
+            positions = bridge.get_positions()
+        finally:
+            bridge.disconnect()
+    except Exception as exc:
+        return {
+            "status": "error",
+            "message": str(exc),
+            "scan_date": latest.get("scan_date"),
+            "positions": [],
+            "planned_orders": _planned_orders(top, set(), position_size),
+        }
+
+    held = {p["ticker"] for p in positions}
+    return {
+        "status": "connected",
+        "scan_date": latest.get("scan_date"),
+        "account": account,
+        "positions": positions,
+        "planned_orders": _planned_orders(top, held, position_size),
+    }
+
+
+def _planned_orders(recommendations, held_tickers, position_size):
+    planned = []
+    for rec in recommendations:
+        ticker = rec.get("ticker")
+        price = rec.get("close") or 0
+        if ticker in held_tickers:
+            planned.append({
+                "ticker": ticker,
+                "action": "skip",
+                "reason": "already_held",
+                "score": rec.get("score"),
+                "price": price,
+            })
+            continue
+        if not price or price <= 0:
+            planned.append({
+                "ticker": ticker,
+                "action": "skip",
+                "reason": "no_price",
+                "score": rec.get("score"),
+                "price": price,
+            })
+            continue
+        qty = max(1, int(position_size / price))
+        planned.append({
+            "ticker": ticker,
+            "action": "BUY",
+            "quantity": qty,
+            "estimated_cost": round(qty * price, 2),
+            "price": price,
+            "score": rec.get("score"),
+            "reason": "top_ta_pick_not_held",
+        })
+    return planned

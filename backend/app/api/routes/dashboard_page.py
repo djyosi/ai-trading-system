@@ -105,6 +105,11 @@ _DASHBOARD_HTML = """\
   </div>
 </div>
 
+<div class="grid">
+  <div class="card" id="ibkr-positions-card"><h2>💼 IBKR Paper Positions</h2><div class="loading">Loading...</div></div>
+  <div class="card" id="ibkr-planned-card"><h2>🧾 Planned Next Orders</h2><div class="loading">Loading...</div></div>
+</div>
+
 <div class="grid" style="align-items:center">
   <div style="display:flex;gap:10px;align-items:center;margin-bottom:4px">
     <span style="color:#6b7a99;font-size:13px">📅 View date:</span>
@@ -271,10 +276,58 @@ function renderEmpty(d) {
 }
 
 load();
+loadIbkr();
 loadPortfolio();
 loadAvailableDates();
 setInterval(load, 60000);
+setInterval(loadIbkr, 60000);
 setInterval(loadPortfolio, 120000);
+
+async function loadIbkr() {
+  try {
+    const res = await fetch('/api/screener/ta/ibkr-status');
+    const d = await res.json();
+    const connected = d.status === 'connected';
+    const account = d.account || {};
+    const positions = d.positions || [];
+    const planned = d.planned_orders || [];
+    const statusCls = connected ? 'green' : 'yellow';
+    const posRows = positions.length ? positions.map(p => '<tr>' +
+      '<td class="ticker-cell">' + p.ticker + '</td>' +
+      '<td>' + Number(p.shares || 0).toLocaleString() + '</td>' +
+      '<td>$' + Number(p.avg_cost || 0).toFixed(2) + '</td>' +
+    '</tr>').join('') : '<tr><td colspan="3" class="gray">No IBKR positions</td></tr>';
+    const plannedRows = planned.length ? planned.slice(0,10).map(o => {
+      const action = o.action === 'BUY' ? '<span class="green">BUY</span>' : '<span class="gray">SKIP</span>';
+      const qty = o.quantity ? Number(o.quantity).toLocaleString() : '—';
+      const cost = o.estimated_cost ? '$' + Number(o.estimated_cost).toLocaleString() : '—';
+      return '<tr>' +
+        '<td class="ticker-cell">' + o.ticker + '</td>' +
+        '<td>' + action + '</td>' +
+        '<td>' + qty + '</td>' +
+        '<td>' + cost + '</td>' +
+        '<td class="muted-small">' + (o.reason || '') + '</td>' +
+      '</tr>';
+    }).join('') : '<tr><td colspan="5" class="gray">No planned orders</td></tr>';
+
+    document.getElementById('ibkr-positions-card').innerHTML =
+      '<h2>💼 IBKR Paper Positions</h2>' +
+      '<div class="stats-row">' +
+        '<div class="stat"><span class="stat-num ' + statusCls + '">' + d.status + '</span><span class="stat-lbl">IBKR</span></div>' +
+        '<div class="stat"><span class="stat-num blue">' + positions.length + '</span><span class="stat-lbl">Positions</span></div>' +
+        '<div class="stat"><span class="stat-num gray">$' + Number(account.NetLiquidation || 0).toLocaleString() + '</span><span class="stat-lbl">Net Liq</span></div>' +
+      '</div>' +
+      '<table class="trades-table"><thead><tr><th>Ticker</th><th>Shares</th><th>Avg cost</th></tr></thead><tbody>' + posRows + '</tbody></table>';
+
+    document.getElementById('ibkr-planned-card').innerHTML =
+      '<h2>🧾 Planned Next Orders <span class="gray">(read-only preview)</span></h2>' +
+      '<div class="callout"><b>Important:</b> this card shows what the execution script would buy from the latest TA scan. It does not place orders by itself.</div>' +
+      '<table class="trades-table"><thead><tr><th>Ticker</th><th>Action</th><th>Qty</th><th>Est. cost</th><th>Reason</th></tr></thead><tbody>' + plannedRows + '</tbody></table>';
+  } catch(e) {
+    document.getElementById('ibkr-positions-card').innerHTML = '<h2>💼 IBKR Paper Positions</h2><div class="empty">Could not load IBKR status</div>';
+    document.getElementById('ibkr-planned-card').innerHTML = '<h2>🧾 Planned Next Orders</h2><div class="empty">Could not load plan</div>';
+  }
+}
 
 async function loadAvailableDates() {
   try {
