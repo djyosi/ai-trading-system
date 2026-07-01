@@ -1,3 +1,5 @@
+import asyncio
+
 from app.backtesting.batch import run_historical_batch
 from app.backtesting.research_report import build_batch_research_report
 from app.backtesting.threshold_sweep import DEFAULT_SCORE_THRESHOLDS, sweep_score_thresholds, tune_thresholds_by_segment
@@ -112,9 +114,27 @@ def _resolve_tickers(tickers, universe_preset):
 
 
 async def _fetch_news_catalysts(tickers, start, end, market_data_provider):
+    """Fetch news catalysts best-effort.
+
+    News is a catalog/enrichment input, not the core TA/paper-validation engine.
+    A transient provider timeout must not fail the whole daily research run.
+    """
     if not hasattr(market_data_provider, "get_news"):
         raise ValueError("Configured provider does not support news catalysts")
-    return {ticker: await market_data_provider.get_news(ticker, start, end) for ticker in tickers}
+
+    semaphore = asyncio.Semaphore(10)
+
+    async def fetch_one(ticker):
+        try:
+            async with semaphore:
+                return ticker, await asyncio.wait_for(
+                    market_data_provider.get_news(ticker, start, end), timeout=8
+                )
+        except Exception:
+            return ticker, []
+
+    pairs = await asyncio.gather(*(fetch_one(ticker) for ticker in tickers))
+    return dict(pairs)
 
 
 async def _resolve_market_context(include_market_context, start, end, market_data_provider):
