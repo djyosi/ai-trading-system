@@ -75,39 +75,18 @@ _DASHBOARD_HTML = """\
 <div id="banner" class="banner banner-gray"><span style="font-size:20px">⏳</span> Loading...</div>
 
 <div class="grid">
-  <div class="card" id="run-card"><h2>📋 Today's Run</h2><div class="loading">Loading...</div></div>
-  <div class="card" id="result-card"><h2>📈 Results</h2><div class="loading">Loading...</div></div>
-  <div class="card" id="edges-card"><h2>✅ What Works</h2><div class="loading">Loading...</div></div>
-  <div class="card" id="problems-card"><h2>❌ What Doesn't</h2><div class="loading">Loading...</div></div>
-</div>
-
-<div class="grid">
-  <div class="card" id="tickers-card"><h2>🏆 Best Tickers</h2><div class="loading">Loading...</div></div>
-  <div class="card" id="weak-tickers-card"><h2>📉 Weakest Tickers</h2><div class="loading">Loading...</div></div>
-  <div class="card" id="patterns-card"><h2>🕯️ Candle Patterns</h2><div class="loading">Loading...</div></div>
-  <div class="card" id="gate-card"><h2>🚦 Status</h2><div class="loading">Loading...</div></div>
-</div>
-
-<div class="grid">
-  <div class="card full" id="segments-card"><h2>🏆 Best Setups (with evidence)</h2><div class="loading">Loading...</div></div>
-</div>
-
-<div class="grid">
   <div class="card full explain" id="plain-explain-card">
-    <div class="big-question">What am I looking at?</div>
-    <div class="plain-answer">This page is the daily TA scanner: it ranks stocks by technical signals only.</div>
+    <div class="big-question">Trading Ops — read this first</div>
+    <div class="plain-answer">Scan completed. IBKR paper is connected. Current holdings and next planned orders are shown below.</div>
     <div class="plain-sub">
-      Read it from top to bottom: highest TA score = strongest technical setup. News is shown only as a saved catalog for future research — it is <b>not</b> used for score, ranking, or IBKR orders.
-    </div>
-    <div class="callout">
-      <b>Current rule:</b> Top picks are candidates to review / send to IBKR paper execution. A row here is not proof of profit and not live money. It is the system's ranked watchlist.
+      <b>Current rule:</b> TA score ranks stocks. News is catalog-only. The Planned Orders card is a read-only preview; it does not place orders by itself.
     </div>
   </div>
 </div>
 
 <div class="grid">
-  <div class="card" id="ibkr-positions-card"><h2>💼 IBKR Paper Positions</h2><div class="loading">Loading...</div></div>
-  <div class="card" id="ibkr-planned-card"><h2>🧾 Planned Next Orders</h2><div class="loading">Loading...</div></div>
+  <div class="card" id="ibkr-positions-card"><h2>💼 IBKR Paper Positions — Real paper holdings</h2><div class="loading">Loading...</div></div>
+  <div class="card" id="ibkr-planned-card"><h2>🧾 Planned Next Orders — Preview only</h2><div class="loading">Loading...</div></div>
 </div>
 
 <div class="grid" style="align-items:center">
@@ -124,6 +103,31 @@ _DASHBOARD_HTML = """\
 <div class="grid">
   <div class="card" id="portfolio-summary-card"><h2>📊 Portfolio P&L</h2><div class="loading">Loading...</div></div>
   <div class="card" id="portfolio-trades-card"><h2>📝 Active Trades</h2><div class="loading">Loading...</div></div>
+</div>
+
+<div class="grid">
+  <div class="card full explain" style="background:#111827;border-color:#334155">
+    <div class="big-question">Historical research / backtest area — not today's IBKR state</div>
+    <div class="plain-sub">The cards below are older research diagnostics and evidence summaries. They are useful for learning, but they are not the current paper positions or next orders.</div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card" id="run-card"><h2>📋 Historical Research Run</h2><div class="loading">Loading...</div></div>
+  <div class="card" id="result-card"><h2>📈 Historical Results</h2><div class="loading">Loading...</div></div>
+  <div class="card" id="edges-card"><h2>✅ Historical What Works</h2><div class="loading">Loading...</div></div>
+  <div class="card" id="problems-card"><h2>❌ Historical What Doesn't</h2><div class="loading">Loading...</div></div>
+</div>
+
+<div class="grid">
+  <div class="card" id="tickers-card"><h2>🏆 Historical Best Tickers</h2><div class="loading">Loading...</div></div>
+  <div class="card" id="weak-tickers-card"><h2>📉 Historical Weakest Tickers</h2><div class="loading">Loading...</div></div>
+  <div class="card" id="patterns-card"><h2>🕯️ Historical Candle Patterns</h2><div class="loading">Loading...</div></div>
+  <div class="card" id="gate-card"><h2>🚦 Research Status</h2><div class="loading">Loading...</div></div>
+</div>
+
+<div class="grid">
+  <div class="card full" id="segments-card"><h2>🏆 Historical Best Setups (with evidence)</h2><div class="loading">Loading...</div></div>
 </div>
 
 <div class="grid">
@@ -169,7 +173,7 @@ async function load() {
     banner.innerHTML = '<span style="font-size:20px">' + icon + '</span> ' + text;
 
     // Run card
-    document.getElementById('run-card').innerHTML = '<h2>📋 Today\\'s Run</h2>' +
+    document.getElementById('run-card').innerHTML = '<h2>📋 Historical Research Run</h2>' +
       row('Date', d.latest_run_date || '-') +
       row('Tickers', (d.tickers_completed || '?') + '/' + (d.tickers_total || '?')) +
       row('News articles', d.news_catalysts_fetched || '-') +
@@ -178,7 +182,7 @@ async function load() {
 
     // Results card
     const exp = pv.expectancy_r;
-    document.getElementById('result-card').innerHTML = '<h2>📈 Results</h2>' +
+    document.getElementById('result-card').innerHTML = '<h2>📈 Historical Results</h2>' +
       row('Avg return per trade (expectancy)', fmtR(exp), exp > 0 ? 'green' : 'red') +
       row('Win rate', fmtPct(pv.win_rate)) +
       row('Evidence-backed', fmtR(ev.evidence_backed_expectancy_r), ev.evidence_backed_expectancy_r !== null && ev.evidence_backed_expectancy_r <= 0 ? 'red' : 'green') +
@@ -187,13 +191,13 @@ async function load() {
 
     // Edges - what works
     const segs = (d.segment_threshold_recommendations || []).filter(s => s.trade_count >= 5).slice(0, 5);
-    document.getElementById('edges-card').innerHTML = '<h2>✅ What Works</h2>' +
+    document.getElementById('edges-card').innerHTML = '<h2>✅ Historical What Works</h2>' +
       (!segs.length ? '<div class="empty">No proven edges yet</div>' :
       segs.map(s => row(s.segment, fmtR(s.expectancy_r) + ' (' + s.trade_count + ' trades)', 'green')).join(''));
 
     // Problems - what doesn't
     const worst = (ev.worst_loss_drivers || []).slice(0, 4);
-    document.getElementById('problems-card').innerHTML = '<h2>❌ What Doesn\\'t</h2>' +
+    document.getElementById('problems-card').innerHTML = '<h2>❌ Historical What Doesn\\'t</h2>' +
       (!worst.length ? '<div class="empty">None identified</div>' :
       worst.map(w => row(w.dimension + ': ' + w.segment, fmtR(w.expectancy_r) + ' (' + w.trade_count + ' trades)', 'red')).join(''));
 
@@ -213,17 +217,17 @@ async function load() {
         ctxSegs.map(s => '<tr><td>' + s.strategy + '</td><td>' + s.catalyst_type + '</td><td>' + s.market_context + '</td><td>' + s.trade_count + '</td><td class="' + expCls(s.expectancy_r) + '">' + fmtR(s.expectancy_r) + '</td><td>' + fmtPct(s.win_rate) + '</td></tr>').join('') +
         '</table>';
     }
-    document.getElementById('segments-card').innerHTML = '<h2>🏆 Best Setups (with evidence)</h2>' + (html || '<div class="empty">No segments with sufficient data</div>');
+    document.getElementById('segments-card').innerHTML = '<h2>🏆 Historical Best Setups (with evidence)</h2>' + (html || '<div class="empty">No segments with sufficient data</div>');
 
     // Tickers
     const top = (d.top_symbols || []).slice(0, 5);
-    document.getElementById('tickers-card').innerHTML = '<h2>🏆 Best Tickers</h2>' +
+    document.getElementById('tickers-card').innerHTML = '<h2>🏆 Historical Best Tickers</h2>' +
       (!top.length ? '<div class="empty">None</div>' :
       '<table><tr><th>Ticker</th><th>Trades</th><th>Exp R</th><th>Win</th></tr>' +
       top.map(s => '<tr><td class="green">' + s.ticker + '</td><td>' + s.closed_total + '</td><td class="green">' + fmtR(s.expectancy_r) + '</td><td>' + fmtPct(s.win_rate) + '</td></tr>').join('') + '</table>');
 
     const weak = (d.weak_symbols || []).slice(0, 5);
-    document.getElementById('weak-tickers-card').innerHTML = '<h2>📉 Weakest Tickers</h2>' +
+    document.getElementById('weak-tickers-card').innerHTML = '<h2>📉 Historical Weakest Tickers</h2>' +
       (!weak.length ? '<div class="empty">None</div>' :
       '<table><tr><th>Ticker</th><th>Trades</th><th>Exp R</th><th>Win</th></tr>' +
       weak.map(s => '<tr><td class="red">' + s.ticker + '</td><td>' + s.closed_total + '</td><td class="red">' + fmtR(s.expectancy_r) + '</td><td>' + fmtPct(s.win_rate) + '</td></tr>').join('') + '</table>');
@@ -244,7 +248,7 @@ async function load() {
       }
     }
     const patterns = Object.entries(patternCounts).sort((a,b) => b[1]-a[1]).slice(0, 6);
-    document.getElementById('patterns-card').innerHTML = '<h2>🕯️ Candle Patterns</h2>' +
+    document.getElementById('patterns-card').innerHTML = '<h2>🕯️ Historical Candle Patterns</h2>' +
       (!hasItems ? '<div class="empty">Pattern data available in full artifact only</div>' :
       !patterns.length ? '<div class="empty">No patterns detected</div>' :
       patterns.map(p => row(p[0], p[1] + 'x', p[0].startsWith('bullish') ? 'green' : p[0].startsWith('bearish') ? 'red' : '')).join(''));
@@ -252,7 +256,7 @@ async function load() {
     // Gate
     const pgStatus = pg.promotion_status || 'no_data';
     const pgCls = pgStatus === 'candidate_for_backtest_confirmation' ? 'green' : pgStatus === 'needs_more_data' ? 'yellow' : 'red';
-    document.getElementById('gate-card').innerHTML = '<h2>🚦 Status</h2>' +
+    document.getElementById('gate-card').innerHTML = '<h2>🚦 Research Status</h2>' +
       row('Promotion', '<span class="' + pgCls + '">' + (pgStatus || '-') + '</span>') +
       row('Reason', pg.reason || '-') +
       row('Orders enabled', '<span class="green">false</span>') +
@@ -292,6 +296,13 @@ async function loadIbkr() {
     const positions = d.positions || [];
     const planned = d.planned_orders || [];
     const statusCls = connected ? 'green' : 'yellow';
+    const banner = document.getElementById('banner');
+    if (banner) {
+      banner.className = 'banner ' + (connected ? 'banner-green' : 'banner-yellow');
+      banner.innerHTML = '<span style="font-size:20px">' + (connected ? '🟢' : '🟡') + '</span> ' +
+        'Trading Ops: latest scan ' + (d.scan_date || '-') + ' • IBKR ' + d.status +
+        ' • ' + positions.length + ' paper positions • planned orders preview shown below';
+    }
     const posRows = positions.length ? positions.map(p => '<tr>' +
       '<td class="ticker-cell">' + p.ticker + '</td>' +
       '<td>' + Number(p.shares || 0).toLocaleString() + '</td>' +
